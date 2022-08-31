@@ -1,5 +1,3 @@
-// c:> ga2022.exe foo bar
-
 #include "wm.h"
 
 #include <stdio.h>
