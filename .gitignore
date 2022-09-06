@@ -50,3 +50,6 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+/src/.vs/ga2022/v17/Browse.VC.opendb
+/src/.vs/ga2022/v17/Browse.VC.db-wal
+/src/.vs/ga2022/v17/Browse.VC.db-shm
