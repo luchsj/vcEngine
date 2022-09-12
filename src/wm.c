@@ -1,3 +1,4 @@
+#include "debug.h"
 #include "wm.h"
 
 #include <stdlib.h>
@@ -11,35 +12,17 @@
 #include <windows.h>
 #include <windowsx.h>
 
-enum
-{
-	k_mouse_button_left = 1 << 0, 	// 0001
-	k_mouse_button_right = 1 << 1,	// 0010
-	k_mouse_button_middle = 1 << 2 	// 0100
-};
-
-enum
-{
-	k_key_arrow_down = 1 << 0, 	// 0001
-	k_key_arrow_up = 1 << 1, 	// 0001
-	k_key_arrow_left = 1 << 2,	// 0010
-	k_key_arrow_right = 1 << 3 	// 0100
-};
-
 typedef struct wm_window_t
 {
 	HWND hwnd;
+	heap_t* heap;
 	bool quit;
 	bool has_focus;
 	uint32_t mouse_mask;
 	uint32_t key_mask; //there are 254 virtual keys. in a commercial engine, there would need to be a bit more effort put into masking (ex. stringing 4 64 bit masks together)
-};
-
-const struct vk_key_map
-	uint32_t key_mask;
 	int mouse_x;
 	int mouse_y;
-} wm_window_t;
+}wm_window_t;
 
 wm_window_t A_WINDOW;
 
@@ -47,7 +30,8 @@ const struct
 {
 	int virtual_key;
 	int ga_key;
-} k_key_map[] =
+} 
+k_key_map[] =
 {
 	{ .virtual_key = VK_LEFT, .ga_key = k_key_left, },
 	{ .virtual_key = VK_RIGHT, .ga_key = k_key_right, },
@@ -61,7 +45,9 @@ static LRESULT CALLBACK _window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 	switch (uMsg)
 	{
-		case WM_KEYDOWN: //this method of key detection won't register two opposing arrow keys being pressed down at the same time. however, there is another call to get that data: GetKeyState() (which would be in wm_pump)
+		if(win)
+		{ 
+			case WM_KEYDOWN: //this method of key detection won't register two opposing arrow keys being pressed down at the same time. however, there is another call to get that data: GetKeyState() (which would be in wm_pump)
 			for (int i = 0; i < _countof(k_key_map); ++i)
 			{
 				if(k_key_map[i].virtual_key == wParam)
@@ -72,7 +58,7 @@ static LRESULT CALLBACK _window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 				break;
 			}
 			break;
-		case WM_KEYUP:
+			case WM_KEYUP:
 			for (int i = 0; i < _countof(k_key_map); ++i)
 			{
 				if(k_key_map[i].virtual_key == wParam)
@@ -138,10 +124,12 @@ static LRESULT CALLBACK _window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 		case WM_CLOSE:
 			win->quit = true;
 			break;
+		}
+	}
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-wm_window_t* wm_create()
+wm_window_t* wm_create(heap_t* heap)
 {
 	WNDCLASS wc =
 	{
@@ -167,17 +155,18 @@ wm_window_t* wm_create()
 
 	if (!hwnd)
 	{
-		fprintf(stderr, "window initialization failed!\n");
+		debug_print_line(k_print_error, "window initialization failed!\n");
 		return NULL;
 	}
 
 	
-	wm_window_t* win = malloc( sizeof(wm_window_t));
+	wm_window_t* win = heap_alloc(heap, sizeof(wm_window_t), 8);
 	win->has_focus = false;
 	win->quit = false;
 	win->key_mask = 0;
 	win->mouse_mask = 0;
 	win->hwnd = hwnd;
+	win->heap = heap;
 
 	SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR) win);
 	ShowWindow(hwnd, TRUE); //windows are created hidden by default
@@ -210,11 +199,10 @@ void wm_get_mouse_move(wm_window_t* window, int* x, int* y)
 {
 	*x = window->mouse_x;
 	*y = window->mouse_y;
->>>>>>> eacf95569f1f4cdf48b9420e8591919efd3db7c9
 }
 
 void wm_destroy(wm_window_t* window)
 {
 	DestroyWindow(window->hwnd);
-	free(window);
+	heap_free();
 }
