@@ -1,3 +1,4 @@
+#include "debug.h"
 #include "heap.h"
 #include "tlsf/tlsf.h"
 #include <stddef.h>
@@ -22,7 +23,7 @@ typedef struct heap_t
 heap_t* heap_create(size_t grow_increment)
 {
 	//call system to allocate memory
-	heap_t* heap = VirtualAlloc(NULL, sizeof(heap_t), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	heap_t* heap = VirtualAlloc(NULL, sizeof(heap_t) + tlsf_size(), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	if (!heap)
 	{
 		fprintf(stderr, "out of memory!");
@@ -44,7 +45,7 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 		arena_t* arena = VirtualAlloc(NULL, arena_size + tlsf_pool_overhead(), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 		if (!arena)
 		{
-			printf("ran out of memory!!\n");
+			debug_print(k_print_error, "out of memory!\n");
 			return NULL;
 		}
 		arena->pool = tlsf_add_pool(heap->tlsf, arena+1, arena_size);
@@ -68,6 +69,7 @@ void heap_destroy(heap_t* heap)
 	{
 		arena_t* next = arena->next;
 		//if(arena->)
+		//where do we actually call CaptureStackBackTrace here? how does it know
 		
 		VirtualFree(arena, 0, MEM_RELEASE);
 		arena = next;

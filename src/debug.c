@@ -3,14 +3,39 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-static uint32_t s_mask = 0;
+#include <DbgHelp.h>
+static uint32_t s_mask = 0xffffffff;
+
+static LONG debug_exception_handler(LPEXCEPTION_POINTERS ExceptionInfo)
+{
+	debug_print(k_print_error, "caught exception!\n");
+	HANDLE file = CreateFile(L"ga2022-crash.dump", GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file != INVALID_HANDLE_VALUE)
+	{
+		MINIDUMP_EXCEPTION_INFORMATION mini_exception = {0};
+		mini_exception.ThreadId = GetCurrentThreadId();
+		mini_exception.ExceptionPointers = ExceptionInfo;
+		mini_exception.ClientPointers = FALSE;
+
+		MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file, MiniDumpWithThreadInfo, &mini_exception, NULL, NULL);
+		CloseHandle(file);
+	}
+	return EXCEPTION_EXECUTE_HANDLER;
+}
+
+void debug_install_exception_handler()
+{
+	//1. __try{} __except{}
+	//2, vectored exception handler
+	AddVectoredExceptionHandler(TRUE, debug_exception_handler);
+}
 
 void debug_set_print_mask(uint32_t mask)
 {
 	s_mask = mask;
 }
 
-void debug_print_line(uint32_t type, _Printf_format_string_ const char* format, ...)
+void debug_print(uint32_t type, _Printf_format_string_ const char* format, ...)
 {
 	if((s_mask & type) == 0)
 		return;
@@ -21,9 +46,25 @@ void debug_print_line(uint32_t type, _Printf_format_string_ const char* format, 
 	vsnprintf(buffer, sizeof(buffer), format, args);
 	va_end(args);
 
+	OutputDebugStringA(buffer);
+
 	DWORD bytes = (DWORD) strlen(buffer);
 	DWORD written = 0;
 	HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	WriteConsoleA(out, buffer, bytes, &written, NULL);
+}
+
+int debug_backtrace(void** stack, int stack_cap)
+{
+	HANDLE self	= GetCurrentProcess();
+	//skip ourselves
+
+	//docs say that this function isn't thread safe (that it shouldn't be called from more than one thread, right?)
+	//should i take the advice of where to initialize and clean up?
+	if(!SymInitialize(self, NULL, FALSE))
+		debug_print(k_print_error, "Backtrace: SymInitialize failed");
+	//SymFromAddr
+	SymCleanup(self);
+	return CaptureStackBackTrace(1, stack_cap, stack, NULL);
 }

@@ -155,7 +155,7 @@ wm_window_t* wm_create(heap_t* heap)
 
 	if (!hwnd)
 	{
-		debug_print_line(k_print_error, "window initialization failed!\n");
+		debug_print(k_print_error, "window initialization failed!\n");
 		return NULL;
 	}
 
@@ -170,6 +170,9 @@ wm_window_t* wm_create(heap_t* heap)
 
 	SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR) win);
 	ShowWindow(hwnd, TRUE); //windows are created hidden by default
+
+	void* stack[10];
+	debug_backtrace(stack, _countof(stack));
 
 	return win;
 }
