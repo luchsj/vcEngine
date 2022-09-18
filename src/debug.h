@@ -20,3 +20,6 @@ void debug_set_print_mask(uint32_t mask);
 //get the addresses of functions in the current callstack
 //returns number of addresses captured
 int debug_backtrace(void** stack, int stack_cap);
+
+//initialize debug system
+void debug_system_init();

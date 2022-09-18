@@ -1,5 +1,6 @@
 #include "debug.h"
 #include "wm.h"
+#include "heap.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -207,5 +208,5 @@ void wm_get_mouse_move(wm_window_t* window, int* x, int* y)
 void wm_destroy(wm_window_t* window)
 {
 	DestroyWindow(window->hwnd);
-	heap_free();
+	heap_free(window->heap, window);
 }

@@ -62,9 +62,14 @@ int debug_backtrace(void** stack, int stack_cap)
 
 	//docs say that this function isn't thread safe (that it shouldn't be called from more than one thread, right?)
 	//should i take the advice of where to initialize and clean up?
-	if(!SymInitialize(self, NULL, FALSE))
-		debug_print(k_print_error, "Backtrace: SymInitialize failed");
 	//SymFromAddr
 	SymCleanup(self);
 	return CaptureStackBackTrace(1, stack_cap, stack, NULL);
+}
+
+void debug_system_init()
+{
+	HANDLE self	= GetCurrentProcess();
+	if(!SymInitialize(self, NULL, FALSE))
+		debug_print(k_print_error, "debug_system_init(): SymInitialize failed");
 }
