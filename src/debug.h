@@ -19,7 +19,18 @@ void debug_set_print_mask(uint32_t mask);
 
 //get the addresses of functions in the current callstack
 //returns number of addresses captured
-int debug_backtrace(void** stack, int stack_cap);
+int debug_backtrace(void** stack, int stack_cap, int offset);
 
-//initialize debug system
+//record trace starting from func that called this.
+//must be called after debug_system_init!
+void debug_record_trace(void* address, uint64_t mem_size); //are we defaulting to uint64 or uint32?
+
+//print the names of functions in the stack associated with the memory at this address
+//(if it exists)
+void debug_print_trace(void* address);
+
+//initialize debug system (initialize sym)
 void debug_system_init();
+
+//unitinialize debug system (clear sym)
+void debug_system_uninit();

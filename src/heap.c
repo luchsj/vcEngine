@@ -7,9 +7,6 @@
 #include <Windows.h>
 #include <Windowsx.h>
 
-#define STACK_SIZE 10
-#define HASH_SIZE 10
-
 typedef struct arena_t
 {
 	pool_t pool;
@@ -19,15 +16,9 @@ typedef struct arena_t
 typedef struct heap_t
 {
 	tlsf_t tlsf;
-	void*** stack_record;
 	size_t grow_increment;
 	arena_t* arena;
 }heap_t;
-
-uint64_t addr_hash(void* addr)
-{
-	return (uint64_t) addr % HASH_SIZE;
-}
 
 heap_t* heap_create(size_t grow_increment)
 {
@@ -41,7 +32,6 @@ heap_t* heap_create(size_t grow_increment)
 	heap->grow_increment = grow_increment;
 	heap->tlsf = tlsf_create(heap+1);
 	heap->arena = NULL;
-	heap->stack_record = malloc(sizeof(void**) * HASH_SIZE);
 	return heap;
 }
 
@@ -65,9 +55,9 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 
 		address = tlsf_memalign(heap->tlsf, alignment, size);
 	}
-
-	//uint64_t place = addr_hash(address);
-	//debug_print(k_print_warning, "memory allocated at address %x\n", address);
+	
+	debug_print(k_print_warning, "memory allocated at address %p\n", address);
+	debug_record_trace(address, size);
 
 	return address;
 }
@@ -81,7 +71,8 @@ void heap_walk(void* ptr, size_t size, int used, void* user)
 {
 	if (used)
 	{
-		//debug_print(k_print_warning | k_print_error, "leak detected at address %x!\n", ptr);
+		debug_print(k_print_warning | k_print_error, "leak detected at address %p!\n", ptr);
+		debug_print_trace(ptr);
 	}
 }
 
@@ -93,11 +84,6 @@ void heap_destroy(heap_t* heap)
 	{
 		arena_t* next = arena->next;
 		tlsf_walk_pool(arena->pool, heap_walk, NULL);
-		//where do we actually call CaptureStackBackTrace here? how does it know
-		//void** stack[5];
-		//debug_backtrace(stack, 4);
-		//for(int i = 0; i < 4; i++)
-			//debug_print(k_print_info, "wow %p\n", stack[i]);
 		
 		VirtualFree(arena, 0, MEM_RELEASE);
 		arena = next;
