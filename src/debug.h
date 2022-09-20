@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
+//debug functions
+
+//bitmask for debug_print
 typedef enum debug_print_t
 {
 	k_print_info = 1 << 0,
@@ -24,14 +27,14 @@ int debug_backtrace(void** stack, int stack_cap, int offset);
 
 //record trace starting from func that called this.
 //must be called after debug_system_init!
-void debug_record_trace(void* address, uint64_t mem_size); //are we defaulting to uint64 or uint32?
+void debug_record_trace(void* address, uint64_t mem_size); 
 
-//print the names of functions in the stack associated with the memory at this address
-//(if it exists)
+//print the names of functions in the stack previously recorded the memory at this address
 void debug_print_trace(void* address);
 
-//initialize debug system (initialize sym)
+//initialize debug system resources 
+//should be called before any other functions in the debug system
 void debug_system_init();
 
-//unitinialize debug system (clear sym)
+//unitinialize debug system
 void debug_system_uninit();

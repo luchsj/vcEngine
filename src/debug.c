@@ -23,7 +23,6 @@ typedef struct trace_alloc_t
 trace_alloc_t** stack_record;
 uint64_t stack_count[HASH_SIZE];
 uint64_t stack_count_max[HASH_SIZE];
-HANDLE self_handle;
 
 uint64_t addr_hash(void* addr)
 {
@@ -81,7 +80,6 @@ void debug_print(uint32_t type, _Printf_format_string_ const char* format, ...)
 
 int debug_backtrace(void** stack, int stack_cap, int offset)
 {
-	SymCleanup(self_handle);
 	return CaptureStackBackTrace(offset, stack_cap, stack, NULL);
 }
 
@@ -103,8 +101,7 @@ void debug_system_init()
 
 void debug_system_uninit()
 {
-	HANDLE self = GetCurrentProcess();
-	SymCleanup(self);
+	SymCleanup(GetCurrentProcess());
 	debug_print(k_print_debug, "debug_system_uninit() success\n");
 }
 
@@ -157,7 +154,7 @@ void debug_print_trace(void* address)
 		return;
 	}
 
-	debug_print(k_print_warning, "Memory leak of %lu bytes with call stack:\n", mem_size);
+	debug_print(k_print_warning, "Memory leak of size %lu bytes with call stack:\n", mem_size);
 	for(int k = 0; k < trace_size; k++)
 	{ 
 		char buffer[sizeof(IMAGEHLP_SYMBOL64) + MAX_SYM_NAME * sizeof(TCHAR)];

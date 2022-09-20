@@ -26,7 +26,7 @@ static int thread_function(void* data)
 
 int main(int argc, const char* argv[])
 {
-//	debug_install_exception_handler();
+	//debug_install_exception_handler();
 	debug_set_print_mask(k_print_info | k_print_warning | k_print_error);
 	debug_system_init();
 
