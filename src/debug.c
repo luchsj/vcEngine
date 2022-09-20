@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -80,19 +81,13 @@ void debug_print(uint32_t type, _Printf_format_string_ const char* format, ...)
 
 int debug_backtrace(void** stack, int stack_cap, int offset)
 {
-	//skip ourselves
-
-	//docs say that this function isn't thread safe (that it shouldn't be called from more than one thread, right?)
-	//should i take the advice of where to initialize and clean up?
-	//SymFromAddr
 	SymCleanup(self_handle);
 	return CaptureStackBackTrace(offset, stack_cap, stack, NULL);
 }
 
 void debug_system_init()
 {
-	SymInitialize(GetCurrentProcess(), NULL, TRUE);
-	//if(!SymInitialize(self_handle, NULL, TRUE))
+	if(SymInitialize(GetCurrentProcess(), NULL, TRUE))
 		//debug_print(k_print_error, "debug_system_init(): SymInitialize failed");
 
 	stack_record = calloc(HASH_SIZE, sizeof(void***)); //using regular calloc so we aren't manipulating tlsf`
@@ -103,20 +98,20 @@ void debug_system_init()
 		stack_record[k] = malloc(sizeof(trace_alloc_t) * stack_count_max[k]);
 	}
 
-	debug_print(k_print_info, "debug_system_init() success\n");
+	debug_print(k_print_debug, "debug_system_init() success\n");
 }
 
 void debug_system_uninit()
 {
 	HANDLE self = GetCurrentProcess();
 	SymCleanup(self);
-	debug_print(k_print_info, "debug_system_uninit() success\n");
+	debug_print(k_print_debug, "debug_system_uninit() success\n");
 }
 
 void debug_record_trace(void* address, uint64_t mem_size)
 {
 	uint64_t place = addr_hash(address);
-	//debug_print(k_print_warning, "memory allocated at address %x\n", address);
+	debug_print(k_print_debug, "recording trace at address %x\n", address);
 	void* temp_stack[STACK_TRACE_SIZE];
 
 	if (!stack_record)
@@ -127,7 +122,7 @@ void debug_record_trace(void* address, uint64_t mem_size)
 
 	stack_record[place][stack_count[place]].address = (uintptr_t) address;
 	stack_record[place][stack_count[place]].mem_size = mem_size;
-	stack_record[place][stack_count[place]].trace_size = debug_backtrace(temp_stack, STACK_TRACE_SIZE, 3);
+	stack_record[place][stack_count[place]].trace_size = debug_backtrace(temp_stack, STACK_TRACE_SIZE, 2);
 	stack_record[place][stack_count[place]].trace_stack = malloc(sizeof(void*) * stack_record[place][stack_count[place]].trace_size);
 
 
@@ -137,20 +132,6 @@ void debug_record_trace(void* address, uint64_t mem_size)
 	}
 
 	stack_count[place]++;
-	/*
-	if (stack_count[place] == stack_count_max[place]) //filled traces at this hash, double space
-	{
-		stack_count_max[place] *= 2;
-		//what is happening here.
-		trace_alloc_t* temp_alloc = (trace_alloc_t*) realloc(stack_record[place], stack_count_max[place]);
-		if (temp_alloc)
-		{
-			debug_print(k_print_error, "debug_record_trace failed to reallocate trace record\n");
-		}
-		stack_record[place] = temp_alloc;
-	}
-	*/
-	//debug_print(k_print_warning, "record_trace failed to record stack trace\n");
 }
 
 void debug_print_trace(void* address)
@@ -172,11 +153,11 @@ void debug_print_trace(void* address)
 	}
 	if (!trace)
 	{
-		debug_print(k_print_warning, "debug_print_trace failed to find address in stack record");
+		debug_print(k_print_warning, "debug_print_trace failed to find given address in stack record");
 		return;
 	}
 
-	debug_print(k_print_warning, "memory leak of %lu bytes with callstack\n", mem_size);
+	debug_print(k_print_warning, "Memory leak of %lu bytes with call stack:\n", mem_size);
 	for(int k = 0; k < trace_size; k++)
 	{ 
 		char buffer[sizeof(IMAGEHLP_SYMBOL64) + MAX_SYM_NAME * sizeof(TCHAR)];
@@ -184,16 +165,22 @@ void debug_print_trace(void* address)
 		DWORD64 trace_addr = (DWORD64) trace[k];
 		DWORD64 displacement;
 		IMAGEHLP_SYMBOL64 *sym = (IMAGEHLP_SYMBOL64*) buffer;
+		IMAGEHLP_LINE64 line;
 		sym->SizeOfStruct = sizeof(IMAGEHLP_SYMBOL64);
 		sym->MaxNameLength = MAX_PATH;
-		if (SymGetSymFromAddr64(GetCurrentProcess(), trace_addr, &displacement, sym))
-		{
-			debug_print(k_print_warning, "[%d] %s\n", k, sym->Name);
-		}
-		else
+		line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+		if (!SymGetSymFromAddr64(GetCurrentProcess(), trace_addr, &displacement, sym))
 		{
 			debug_print(k_print_error, "debug_print_trace failed to retrieve symbol info; SymGetSym error %d\n", GetLastError());
 		}
+
+		if (!SymGetLineFromAddr64(GetCurrentProcess(), trace_addr, &displacement, &line))
+		{
+			debug_print(k_print_error, "debug_print_trace failed to retrieve symbol info; SymGetLine error %d\n", GetLastError());
+		}
+
+		debug_print(k_print_info, "[%d] %s at %s:%d\n", k, sym->Name, strrchr(line.FileName, '\\') + 1, line.LineNumber);
+
 		if(strcmp(sym->Name, "main") == 0)
 			break;
 	}	

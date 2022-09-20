@@ -15,5 +15,10 @@ void mutex_destroy(mutex_t* mutex)
 
 void mutex_lock(mutex_t* mutex)
 {
-	//WaitForSingleObject();
+	WaitForSingleObject(mutex, INFINITE);
+}
+
+void mutex_unlock(mutex_t* mutex)
+{
+	ReleaseMutex(mutex);
 }

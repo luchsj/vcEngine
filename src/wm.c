@@ -172,9 +172,6 @@ wm_window_t* wm_create(heap_t* heap)
 	SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR) win);
 	ShowWindow(hwnd, TRUE); //windows are created hidden by default
 
-	//void* stack[10];
-	//debug_backtrace(stack, _countof(stack), 1);
-
 	return win;
 }
 
@@ -191,7 +188,7 @@ bool wm_pump(wm_window_t* window)
 
 uint32_t wm_get_mouse_mask(wm_window_t* window)
 {
-	return window->mouse_mask;	 //%x to print binary
+	return window->mouse_mask;
 }
 
 uint32_t wm_get_key_mask(wm_window_t* window)

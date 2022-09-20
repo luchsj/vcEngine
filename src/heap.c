@@ -56,7 +56,7 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 		address = tlsf_memalign(heap->tlsf, alignment, size);
 	}
 	
-	debug_print(k_print_warning, "memory allocated at address %p\n", address);
+	debug_print(k_print_debug, "memory allocated at address %p\n", address);
 	debug_record_trace(address, size);
 
 	return address;
@@ -71,7 +71,7 @@ void heap_walk(void* ptr, size_t size, int used, void* user)
 {
 	if (used)
 	{
-		debug_print(k_print_warning | k_print_error, "leak detected at address %p!\n", ptr);
+		debug_print(k_print_debug, "leak detected at address %p!\n", ptr);
 		debug_print_trace(ptr);
 	}
 }
