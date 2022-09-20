@@ -85,9 +85,10 @@ int debug_backtrace(void** stack, int stack_cap, int offset)
 
 void debug_system_init()
 {
+	//initialize symbol system
 	if(SymInitialize(GetCurrentProcess(), NULL, TRUE))
-		//debug_print(k_print_error, "debug_system_init(): SymInitialize failed");
 
+	//allocate resources for stack tracing
 	stack_record = calloc(HASH_SIZE, sizeof(void***)); //using regular calloc so we aren't manipulating tlsf`
 	for (int k = 0; k < HASH_SIZE; k++)
 	{
@@ -107,6 +108,7 @@ void debug_system_uninit()
 
 void debug_record_trace(void* address, uint64_t mem_size)
 {
+	//get memory info
 	uint64_t place = addr_hash(address);
 	debug_print(k_print_debug, "recording trace at address %x\n", address);
 	void* temp_stack[STACK_TRACE_SIZE];
@@ -133,7 +135,7 @@ void debug_record_trace(void* address, uint64_t mem_size)
 
 void debug_print_trace(void* address)
 {
-	//first, find the trace in the record
+	//find address in trace record
 	uint64_t place = addr_hash(address);
 	void** trace = NULL;
 	uint64_t trace_size = 0;
@@ -154,11 +156,12 @@ void debug_print_trace(void* address)
 		return;
 	}
 
+	//if trace found, print call stack
 	debug_print(k_print_warning, "Memory leak of size %lu bytes with call stack:\n", mem_size);
 	for(int k = 0; k < trace_size; k++)
 	{ 
+		//get info from symbols
 		char buffer[sizeof(IMAGEHLP_SYMBOL64) + MAX_SYM_NAME * sizeof(TCHAR)];
-
 		DWORD64 trace_addr = (DWORD64) trace[k];
 		DWORD64 displacement;
 		IMAGEHLP_SYMBOL64 *sym = (IMAGEHLP_SYMBOL64*) buffer;
@@ -176,7 +179,7 @@ void debug_print_trace(void* address)
 			debug_print(k_print_error, "debug_print_trace failed to retrieve symbol info; SymGetLine error %d\n", GetLastError());
 		}
 
-		debug_print(k_print_info, "[%d] %s at %s:%d\n", k, sym->Name, strrchr(line.FileName, '\\') + 1, line.LineNumber);
+		debug_print(k_print_warning, "[%d] %s at %s:%d\n", k, sym->Name, strrchr(line.FileName, '\\') + 1, line.LineNumber);
 
 		if(strcmp(sym->Name, "main") == 0)
 			break;
