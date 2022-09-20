@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
+//debug system
+//some functions (namely stack tracing) require debug_system_init to be called before they are used
+
 typedef enum debug_print_t
 {
 	k_print_info = 1 << 0,
@@ -21,16 +24,23 @@ void debug_set_print_mask(uint32_t mask);
 //returns number of addresses captured
 int debug_backtrace(void** stack, int stack_cap, int offset);
 
-//record trace starting from func that called this.
+//record trace starting from func that called this. stores address trace as well as requested memory size.
+// should i store strings instead of addresses so i can ignore everything after main?
 //must be called after debug_system_init!
-void debug_record_trace(void* address, uint64_t mem_size); //are we defaulting to uint64 or uint32?
+void debug_record_trace(void* address, uint32_t mem_size); 
+
+//remove previously created trace for given address
+void debug_remove_trace(void* address);
+
+//clear all traces from the record (without releasing structure)
+void debug_destroy_traces();
 
 //print the names of functions in the stack associated with the memory at this address
 //(if it exists)
 void debug_print_trace(void* address);
 
-//initialize debug system (initialize sym)
+//initialize resources used by debug system 
 void debug_system_init();
 
-//unitinialize debug system (clear sym)
+//unitinialize debug system 
 void debug_system_uninit();

@@ -14,19 +14,19 @@ static uint32_t s_mask = 0xffffffff;
 typedef struct trace_alloc_t
 {
 	uintptr_t address;
-	uint64_t mem_size;
-	uint64_t trace_size;
+	uint32_t mem_size;
+	uint32_t trace_size;
 	void** trace_stack;
 } trace_alloc_t;
 
 trace_alloc_t** stack_record;
-uint64_t stack_count[HASH_SIZE];
-uint64_t stack_count_max[HASH_SIZE];
-HANDLE self_handle;
+uint32_t stack_count[HASH_SIZE];
+uint32_t stack_count_max[HASH_SIZE];
+HANDLE self_handle; //shouldn't need this anymore
 
-uint64_t addr_hash(void* addr)
+uint32_t addr_hash(void* addr)
 {
-	return ((uint64_t) addr) % HASH_SIZE;
+	return ((uint64_t) addr * 7) % HASH_SIZE;
 }
 
 static LONG debug_exception_handler(LPEXCEPTION_POINTERS ExceptionInfo)
@@ -80,12 +80,6 @@ void debug_print(uint32_t type, _Printf_format_string_ const char* format, ...)
 
 int debug_backtrace(void** stack, int stack_cap, int offset)
 {
-	//skip ourselves
-
-	//docs say that this function isn't thread safe (that it shouldn't be called from more than one thread, right?)
-	//should i take the advice of where to initialize and clean up?
-	//SymFromAddr
-	SymCleanup(self_handle);
 	return CaptureStackBackTrace(offset, stack_cap, stack, NULL);
 }
 
@@ -108,14 +102,13 @@ void debug_system_init()
 
 void debug_system_uninit()
 {
-	HANDLE self = GetCurrentProcess();
-	SymCleanup(self);
+	SymCleanup(GetCurrentProcess);
 	debug_print(k_print_info, "debug_system_uninit() success\n");
 }
 
-void debug_record_trace(void* address, uint64_t mem_size)
+void debug_record_trace(void* address, uint32_t mem_size)
 {
-	uint64_t place = addr_hash(address);
+	uint32_t place = addr_hash(address);
 	//debug_print(k_print_warning, "memory allocated at address %x\n", address);
 	void* temp_stack[STACK_TRACE_SIZE];
 
@@ -130,8 +123,7 @@ void debug_record_trace(void* address, uint64_t mem_size)
 	stack_record[place][stack_count[place]].trace_size = debug_backtrace(temp_stack, STACK_TRACE_SIZE, 3);
 	stack_record[place][stack_count[place]].trace_stack = malloc(sizeof(void*) * stack_record[place][stack_count[place]].trace_size);
 
-
-	for (int k = 0; k < stack_record[place][stack_count[place]].trace_size; k++)
+	for (unsigned int k = 0; k < stack_record[place][stack_count[place]].trace_size; k++)
 	{
 		stack_record[place][stack_count[place]].trace_stack[k] = temp_stack[k];
 	}
@@ -153,14 +145,30 @@ void debug_record_trace(void* address, uint64_t mem_size)
 	//debug_print(k_print_warning, "record_trace failed to record stack trace\n");
 }
 
+void debug_remove_trace(void* address)
+{
+	uint32_t place = addr_hash(address);
+	for (unsigned int k = 0; k < stack_count[place]; k++)
+	{
+		if (stack_record[place][k].address == (uintptr_t) address)
+		{
+			free(stack_record[place][k].trace_stack);
+			stack_record[place][k].address = NULL;
+			stack_record[place][k].trace_size = 0;
+			stack_record[place][k].mem_size = 0;
+			break;
+		}
+	}
+}
+
 void debug_print_trace(void* address)
 {
 	//first, find the trace in the record
-	uint64_t place = addr_hash(address);
+	uint32_t place = addr_hash(address);
 	void** trace = NULL;
-	uint64_t trace_size = 0;
-	uint64_t mem_size = 0;
-	for (int k = 0; k < stack_count[place]; k++)
+	uint32_t trace_size = 0;
+	uint32_t mem_size = 0;
+	for (unsigned int k = 0; k < stack_count[place]; k++)
 	{
 		if (stack_record[place][k].address == (uintptr_t) address)
 		{
@@ -177,7 +185,7 @@ void debug_print_trace(void* address)
 	}
 
 	debug_print(k_print_warning, "memory leak of %lu bytes with callstack\n", mem_size);
-	for(int k = 0; k < trace_size; k++)
+	for(unsigned int k = 0; k < trace_size; k++)
 	{ 
 		char buffer[sizeof(IMAGEHLP_SYMBOL64) + MAX_SYM_NAME * sizeof(TCHAR)];
 
