@@ -1,6 +1,7 @@
 #include "debug.h"
 #include "heap.h"
 #include "tlsf/tlsf.h"
+#include "mutex.h"
 #include <stddef.h>
 #include <stdio.h>
 
@@ -18,6 +19,7 @@ typedef struct heap_t
 	tlsf_t tlsf;
 	size_t grow_increment;
 	arena_t* arena;
+	mutex_t* mutex;	
 }heap_t;
 
 heap_t* heap_create(size_t grow_increment)
@@ -37,6 +39,7 @@ heap_t* heap_create(size_t grow_increment)
 
 void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 {
+	mutex_lock(heap->mutex);
 	//will need to get current stack trace and store it
 	void* address = tlsf_memalign(heap->tlsf, alignment, size);
 	if (!address)
@@ -58,13 +61,16 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 	
 	debug_print(k_print_debug, "memory allocated at address %p\n", address);
 	debug_record_trace(address, size);
+	mutex_unlock(heap->mutex);
 
 	return address;
 }
 
 void heap_free(heap_t* heap, void* address)
 {
+	mutex_lock(heap->mutex);
 	tlsf_free(heap->tlsf, address);
+	mutex_unlock(heap->mutex);
 }
 
 void heap_walk(void* ptr, size_t size, int used, void* user)
