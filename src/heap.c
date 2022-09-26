@@ -1,3 +1,5 @@
+#include "heap.h"
+
 #include "debug.h"
 #include "heap.h"
 #include "tlsf/tlsf.h"
@@ -19,7 +21,7 @@ typedef struct heap_t
 	tlsf_t tlsf;
 	size_t grow_increment;
 	arena_t* arena;
-	mutex_t* mutex;	
+	mutex_t* mutex;
 }heap_t;
 
 heap_t* heap_create(size_t grow_increment)
@@ -31,9 +33,12 @@ heap_t* heap_create(size_t grow_increment)
 		debug_print(k_print_error, "out of memory!\n");
 		return NULL;
 	}
+
+	heap->mutex = mutex_create();
 	heap->grow_increment = grow_increment;
 	heap->tlsf = tlsf_create(heap+1);
 	heap->arena = NULL;
+
 	return heap;
 }
 
@@ -58,7 +63,7 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 
 		address = tlsf_memalign(heap->tlsf, alignment, size);
 	}
-	
+
 	debug_print(k_print_debug, "memory allocated at address %p\n", address);
 	debug_record_trace(address, size);
 	mutex_unlock(heap->mutex);
@@ -85,6 +90,7 @@ void heap_walk(void* ptr, size_t size, int used, void* user)
 void heap_destroy(heap_t* heap)
 {
 	tlsf_destroy(heap->tlsf);
+
 	arena_t* arena = heap->arena;
 	while (arena)
 	{
@@ -94,5 +100,8 @@ void heap_destroy(heap_t* heap)
 		VirtualFree(arena, 0, MEM_RELEASE);
 		arena = next;
 	}
+
+	mutex_destroy(heap->mutex);
+
 	VirtualFree(heap, 0, MEM_RELEASE);
 }

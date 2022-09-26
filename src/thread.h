@@ -1,3 +1,6 @@
+// Threading support.
+
+// Handle to a thread.
 typedef struct thread_t thread_t;
 
 //create a new thread that performs the given function

@@ -21,6 +21,8 @@ uint32_t wm_get_key_mask(wm_window_t* window);
 // Handle to a window.
 typedef struct wm_window_t wm_window_t;
 
+typedef struct heap_t heap_t;
+
 // Mouse buttons. See wm_get_mouse_mask().
 enum
 {
@@ -41,7 +43,7 @@ enum
 
 // Creates a new window. Must be destroyed with wm_destroy().
 // Returns NULL on failure, otherwise a new window.
-wm_window_t* wm_create();
+wm_window_t* wm_create(heap_t* heap);
 
 // Destroy a previously created window.
 void wm_destroy(wm_window_t* window);

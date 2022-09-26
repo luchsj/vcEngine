@@ -19,6 +19,11 @@ typedef struct thread_data_t
 	//mutex_t* mutex;
 }thread_data_t;
 
+#include <windows.h>
+
+static void homework1_test();
+static void homework2_test();
+
 int main(int argc, const char* argv[])
 {
 	//debug_install_exception_handler();
@@ -46,6 +51,14 @@ int main(int argc, const char* argv[])
 	*/
 
 	uint32_t mask = wm_get_mouse_mask(window);
+
+	homework1_test();
+	homework2_test();
+
+	debug_set_print_mask(k_print_warning | k_print_error);
+
+	heap_t* heap = heap_create(2 * 1024 * 1024);
+	wm_window_t* window = wm_create(heap);
 
 	// THIS IS THE MAIN LOOP!
 	while (!wm_pump(window))

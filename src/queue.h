@@ -1,5 +1,6 @@
 //thread-safe queue container
 
+// Handle to a thread-safe queue.
 typedef struct queue_t queue_t;
 
 typedef struct heap_t heap_t;
