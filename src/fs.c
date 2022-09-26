@@ -36,6 +36,8 @@ typedef struct fs_work_t
 	int result;
 } fs_work_t;
 
+static int file_thread_func(void* user);
+
 fs_t* fs_create(heap_t* heap, int queue_capacity)
 {
 	fs_t* fs = heap_alloc(heap, sizeof(fs_t), 8);
@@ -88,6 +90,8 @@ fs_work_t* fs_write(fs_t* fs, const char* path, const void* buffer, size_t size,
 	else
 		queue_push(fs->file_queue, work);
 
+	return work;
+
 }
 
 bool fs_work_is_done(fs_work_t* work)
@@ -104,20 +108,22 @@ void fs_work_wait(fs_work_t* work)
 int fs_work_get_result(fs_work_t* work)
 {
 	fs_work_wait(work);
-	return work ? work->buffer:NULL;
+	return work ? work->result:-1;
+}
+
+void* fs_work_get_buffer(fs_work_t* work)
+{
+	fs_work_wait(work);
+	return work ? work->buffer : NULL;
 }
 
 size_t fs_work_get_size(fs_work_t* work)
 {
-	if (work)
-	{
-		event_wait(work->done);
-		event_destroy(work->done);
-		heap_free(work->heap, work);
-	}
+	fs_work_wait(work);
+	return work ? work->size : 0;
 }
 
-fs_work_destroy(fs_work_t* work)
+void fs_work_destroy(fs_work_t* work)
 {
 	if (work)
 	{
@@ -142,7 +148,7 @@ static void file_read(fs_work_t* item)
 		return;
 	}
 
-	if (!GetFileSize(handle, (PLARGE_INTEGER)&item->size))
+	if (!GetFileSizeEx(handle, (PLARGE_INTEGER)&item->size))
 	{
 		item->result = GetLastError();
 		CloseHandle(handle);
@@ -151,7 +157,7 @@ static void file_read(fs_work_t* item)
 	item->buffer = heap_alloc(item->heap, item->size, 8);
 
 	DWORD bytes_read = 0; 
-	if(!ReadFile(handle, item->buffer, item->size, &bytes_read, NULL));
+	if(!ReadFile(handle, item->buffer, (DWORD) item->size, &bytes_read, NULL));
 	{
 		item->result = GetLastError();
 		CloseHandle(handle);
@@ -191,25 +197,18 @@ static void file_write(fs_work_t* item)
 		return;
 	}
 
-	if (!GetFileSize(handle, (PLARGE_INTEGER)&item->size))
-	{
-		item->result = GetLastError();
-		CloseHandle(handle);
-		return;
-	}
-	item->buffer = heap_alloc(item->heap, item->size, 8);
-
-	DWORD bytes_read = 0; 
-	if(!WriteFile(handle, item->buffer, item->size, &bytes_read, NULL))
+	DWORD bytes_written = 0;
+	if(!WriteFile(handle, item->buffer, (DWORD) item->size, &bytes_written, NULL))
 	{
 		item->result = GetLastError();
 		CloseHandle(handle);
 		return;
 	}
 
-	item->size = bytes_read;
+	item->size = bytes_written;
 	CloseHandle(handle);
 
+	//file on git doesn't have this?
 	if (item->use_compression)
 	{
 		//hw2 compress

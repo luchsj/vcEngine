@@ -32,4 +32,19 @@ fs_work_t* fs_read(fs_t* fs, const char* path, heap_t* heap, bool null_terminate
 fs_work_t* fs_write(fs_t* fs, const char* path, const void* buffer, size_t size, bool use_compression);
 
 //if true, file work is complete
-bool fs_work_is_done()
+bool fs_work_is_done(fs_work_t* work);
+
+//block for the file work to complete
+void fs_work_wait(fs_work_t* work);
+
+//get error code for file work. value of zero generally indicates success
+int fs_work_get_result(fs_work_t* work);
+
+//get buffer associated with file operation
+void* fs_work_get_buffer(fs_work_t* work);
+
+//get size associated with file operation
+size_t fs_work_get_size(fs_work_t* work);
+
+//free file work object
+void fs_work_destroy(fs_work_t* work);
