@@ -1,8 +1,13 @@
 #include "fs.h"
+
+#include "event.h"
 #include "heap.h"
+#include "queue.h"
 #include "thread.h"
 #include "event.h"
 #include "queue.h"
+
+#include <string.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -89,7 +94,9 @@ fs_work_t* fs_write(fs_t* fs, const char* path, const void* buffer, size_t size,
 		//hw2
 	}
 	else
+	{
 		queue_push(fs->file_queue, work);
+	}
 
 	return work;
 
@@ -104,6 +111,7 @@ void fs_work_wait(fs_work_t* work)
 {
 	if(work)
 		event_wait(work->done);
+	}
 }
 
 int fs_work_get_result(fs_work_t* work)
@@ -237,15 +245,15 @@ static int file_thread_func(void* user)
 		{
 			break;
 		}
-
+		
 		switch (work->op)
 		{
-			case k_fs_work_op_read:
-				file_read(work);
-				break;
-			case k_fs_work_op_write:
-				file_write(work);
-				break;
+		case k_fs_work_op_read:
+			file_read(work);
+			break;
+		case k_fs_work_op_write:
+			file_write(work);
+			break;
 		}
 	}
 
