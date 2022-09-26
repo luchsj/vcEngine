@@ -1,9 +1,9 @@
 #include "atomic.h"
+#include "debug.h"
 #include "fs.h"
 #include "mutex.h"
 #include "wm.h"
 #include "heap.h"
-#include "debug.h"
 #include "thread.h"
 
 #include <assert.h>
@@ -31,23 +31,10 @@ int main(int argc, const char* argv[])
 	heap_t* heap = heap_create(2 * 1024 * 1024);
 	wm_window_t* window = wm_create(heap);
 
-	/*
-	int counter = 0;
-	thread_t* threads[8];
-	for (int i = 0; i < _countof(threads); i++)
-	{
-		threads[i] = thread_create(thread_function, &counter);
-	}
-
-	for (int i = 0; i < _countof(threads); i++)
-	{
-		thread_destroy(threads[i]);
-	}
-	*/
-
 	uint32_t mask = wm_get_mouse_mask(window);
 
 	// THIS IS THE MAIN LOOP!
+	/*
 	while (!wm_pump(window))
 	{
 		int x, y;
@@ -55,6 +42,7 @@ int main(int argc, const char* argv[])
 		uint32_t mask = wm_get_mouse_mask(window);
 		debug_print(k_print_info, "MOUSE mask=%x move=%dx%x\n", wm_get_mouse_mask(window), x, y);
 	}
+	*/
 
 	wm_destroy(window);
 	heap_destroy(heap);
@@ -81,6 +69,11 @@ static void hw1_test()
 static void hw2_test_internal(heap_t* heap, fs_t* fs, bool use_compression)
 {
 	const char* write_data = "hello world!";
+//	char compressed_buffer[312]
+//	int compressed_size = L4Z_compredd_default(write_data, dst, (int) strlen(write_data), int sizeof(compressed_buffer))
+//	char result[123214];
+//	lz4_decompress_safe(compressed_buffer, result, compressed_size, sizeof(result));
+//	will need to get size of compressed file, meaning we need to store it in the file somehow
 	fs_work_t* write_work = fs_write(fs, "foo.bar", write_data, strlen(write_data), use_compression);
 	fs_work_t* read_work = fs_read(fs, "foo.bar", heap, true, use_compression);
 
@@ -90,7 +83,7 @@ static void hw2_test_internal(heap_t* heap, fs_t* fs, bool use_compression)
 	char* read_data = fs_work_get_buffer(read_work);
 	assert(read_data && strcmp(read_data, "hello world!") == 0);
 	assert(fs_work_get_result(read_work) == 0);
-	assert(fs_work_get_size(read_work) == 0);
+	assert(fs_work_get_size(read_work) == 12);
 
 	fs_work_destroy(read_work);
 	fs_work_destroy(write_work);

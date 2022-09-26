@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdbool.h>
 
 //asynchronous read/write file system

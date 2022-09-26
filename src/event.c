@@ -16,7 +16,7 @@ void event_destroy(event_t* event)
 
 void event_signal(event_t* event)
 {
-	CloseHandle(event);
+	SetEvent(event);
 }
 
 void event_wait(event_t* event)

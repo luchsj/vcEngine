@@ -7,6 +7,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <stdbool.h>
+#include <string.h>
 
 typedef struct fs_t
 {
@@ -77,8 +78,8 @@ fs_work_t* fs_write(fs_t* fs, const char* path, const void* buffer, size_t size,
 	work->heap = fs->heap;
 	work->op = k_fs_work_op_write;
 	strcpy_s(work->path, sizeof(work->path), path);
-	work->buffer = NULL;
-	work->size = 0;
+	work->buffer = (void*)buffer;
+	work->size = size;
 	work->done = event_create();
 	work->result = 0;
 	work->null_terminate = false;
@@ -141,7 +142,7 @@ static void file_read(fs_work_t* item)
 		item->result = -1;
 		return;
 	}
-	HANDLE handle = CreateFile(item->path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE handle = CreateFile(wide_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
 	{
 		item->result = GetLastError();
@@ -154,10 +155,10 @@ static void file_read(fs_work_t* item)
 		CloseHandle(handle);
 		return;
 	}
-	item->buffer = heap_alloc(item->heap, item->size, 8);
+	item->buffer = heap_alloc(item->heap, item->null_terminate ? item->size + 1 : item->size, 8);
 
 	DWORD bytes_read = 0; 
-	if(!ReadFile(handle, item->buffer, (DWORD) item->size, &bytes_read, NULL));
+	if(!ReadFile(handle, item->buffer, (DWORD) item->size, &bytes_read, NULL))
 	{
 		item->result = GetLastError();
 		CloseHandle(handle);
@@ -165,6 +166,10 @@ static void file_read(fs_work_t* item)
 	}
 
 	item->size = bytes_read;
+	if (item->null_terminate)
+	{
+		((char*) item->buffer)[bytes_read] = 0;
+	}
 	CloseHandle(handle);
 
 	if (item->use_compression)
@@ -185,12 +190,12 @@ static void file_read(fs_work_t* item)
 static void file_write(fs_work_t* item)
 {
 	wchar_t wide_path[1024];
-	if (0 >= MultiByteToWideChar(CP_UTF8, 0, item->path, -1, wide_path, sizeof(wide_path)))
+	if (MultiByteToWideChar(CP_UTF8, 0, item->path, -1, wide_path, sizeof(wide_path)) <= 0)
 	{
 		item->result = -1;
 		return;
 	}
-	HANDLE handle = CreateFile(item->path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE handle = CreateFile(wide_path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
 	{
 		item->result = GetLastError();

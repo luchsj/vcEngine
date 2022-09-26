@@ -31,6 +31,7 @@ heap_t* heap_create(size_t grow_increment)
 		debug_print(k_print_error, "out of memory!\n");
 		return NULL;
 	}
+	heap->mutex = mutex_create();
 	heap->grow_increment = grow_increment;
 	heap->tlsf = tlsf_create(heap+1);
 	heap->arena = NULL;
