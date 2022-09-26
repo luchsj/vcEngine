@@ -13,6 +13,8 @@ typedef struct fs_t
 {
 	heap_t* heap;
 	queue_t* file_queue;
+	queue_t* compress_queue;
+	queue_t* decompress_queue;
 	thread_t* file_thread;
 }fs_t;
 
