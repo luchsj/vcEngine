@@ -78,9 +78,10 @@ static void hw2_test_internal(heap_t* heap, fs_t* fs, bool use_compression)
 	fs_work_t* read_work = fs_read(fs, "foo.bar", heap, true, use_compression);
 
 	assert(fs_work_get_result(write_work) == 0);
-	assert(fs_work_get_size(write_work) == 12);
+	assert(fs_work_get_size(write_work) == 16); //the size of the assertion has to be changed to accommodate the additional data
 
 	char* read_data = fs_work_get_buffer(read_work);
+	printf("%s\n", read_data);
 	assert(read_data && strcmp(read_data, "hello world!") == 0);
 	assert(fs_work_get_result(read_work) == 0);
 	assert(fs_work_get_size(read_work) == 12);
@@ -88,7 +89,7 @@ static void hw2_test_internal(heap_t* heap, fs_t* fs, bool use_compression)
 	fs_work_destroy(read_work);
 	fs_work_destroy(write_work);
 
-	heap_free(heap, read_data);
+	//heap_free(heap, read_data); is this needed? there's already a call in fs_work_destroy
 }
 
 static void hw2_test()
@@ -96,10 +97,10 @@ static void hw2_test()
 	heap_t* heap = heap_create(4096);
 	fs_t* fs = fs_create(heap, 16);
 
-	const bool disable_compression = false;
-	hw2_test_internal(heap, fs, disable_compression);
+//	const bool disable_compression = false;
+	//hw2_test_internal(heap, fs, disable_compression);
 
-	const bool enable_compression = false;
+	const bool enable_compression = true;
 	hw2_test_internal(heap, fs, enable_compression);
 
 	fs_destroy(fs);
