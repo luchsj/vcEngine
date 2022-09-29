@@ -139,7 +139,11 @@ void fs_work_destroy(fs_work_t* work)
 	if (work)
 	{
 		if(work->use_compression)
+		{ 
+			//if(work->op == k_fs_work_op_read)
+				//heap_free(work->heap, work->old_buffer);
 			heap_free(work->heap, work->buffer);
+		}
 		event_wait(work->done);
 		event_destroy(work->done);
 		heap_free(work->heap, work);
@@ -192,8 +196,14 @@ static void file_read(fs_work_t* item, fs_t* fs)
 			}
 		}
 		item->compression_size = atoi(compression_buffer);
-		memmove(item->buffer, ((char*) item->buffer) + strlen(compression_buffer) + 1, item->compression_size + 1);
 		item->size -= strlen(compression_buffer) + 1; //tlsf is complaining because it can't properly free the buffer after this memory manipulation
+		for (unsigned int k = 0; k < item->size; k++)
+		{
+			((char*)item->buffer)[k] = ((char*)item->buffer)[k + strlen(compression_buffer) + 1];
+		}
+		//strcpy_s(item->buffer, item->size, ((char*) item->buffer) + strlen(compression_buffer) + 1);
+		//memmove(item->buffer, ((char*) item->buffer) + strlen(compression_buffer) + 1, item->compression_size + 1);
+		//item->size -= strlen(compression_buffer) + 1; //tlsf is complaining because it can't properly free the buffer after this memory manipulation
 
 		queue_push(fs->compression_queue, item);
 	}
@@ -313,6 +323,7 @@ static int compression_thread_func(void* user)
 					break;
 				}
 				work->size = bytes_decompressed;
+				heap_free(fs->heap, work->buffer);
 				work->buffer = compression_buffer;
 				event_signal(work->done);
 				break;
