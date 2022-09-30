@@ -11,9 +11,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define COMPRESS_SIZE_LIMIT 2048
-#define DECOMPRESS_SIZE_LIMIT 8192
-
 typedef struct fs_t
 {
 	heap_t* heap;
