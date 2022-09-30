@@ -138,112 +138,102 @@ void fs_work_destroy(fs_work_t* work)
 {
 	if (work)
 	{
-		if(work->use_compression)
-		{ 
-			//if(work->op == k_fs_work_op_read)
-				//heap_free(work->heap, work->old_buffer);
+		if(work->use_compression || work->op == k_fs_work_op_read)
 			heap_free(work->heap, work->buffer);
-		}
 		event_wait(work->done);
 		event_destroy(work->done);
 		heap_free(work->heap, work);
 	}
 }
 
-static void file_read(fs_work_t* item, fs_t* fs)
+static void file_read(fs_work_t* work, fs_t* fs)
 {
 	wchar_t wide_path[1024];
-	if (MultiByteToWideChar(CP_UTF8, 0, item->path, -1, wide_path, sizeof(wide_path)) <= 0)
+	if (MultiByteToWideChar(CP_UTF8, 0, work->path, -1, wide_path, sizeof(wide_path)) <= 0)
 	{
-		item->result = -1;
+		work->result = -1;
 		return;
 	}
 	HANDLE handle = CreateFile(wide_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
 	{
-		item->result = GetLastError();
+		work->result = GetLastError();
 		return;
 	}
 
-	if (!GetFileSizeEx(handle, (PLARGE_INTEGER)&item->size))
+	if (!GetFileSizeEx(handle, (PLARGE_INTEGER)&work->size))
 	{
-		item->result = GetLastError();
+		work->result = GetLastError();
 		CloseHandle(handle);
 		return;
 	}
-	item->buffer = heap_alloc(item->heap, item->null_terminate ? item->size + 1 : item->size, 8);
+	work->buffer = heap_alloc(work->heap, work->null_terminate ? work->size + 1 : work->size, 8);
 
 	DWORD bytes_read = 0; 
-	if(!ReadFile(handle, item->buffer, (DWORD) item->size, &bytes_read, NULL))
+	if(!ReadFile(handle, work->buffer, (DWORD) work->size, &bytes_read, NULL))
 	{
-		item->result = GetLastError();
+		work->result = GetLastError();
 		CloseHandle(handle);
 		return;
 	}
 
 	CloseHandle(handle);
 
-	if (item->use_compression)
+	if (work->use_compression)
 	{
 		char compression_buffer[16];
 		for (int k = 0; k < 16; k++)
 		{
-			compression_buffer[k] = ((char*) item->buffer)[k];
+			compression_buffer[k] = ((char*) work->buffer)[k];
 			if (compression_buffer[k] == '\n')
 			{
 				compression_buffer[k] = 0;
 				break;
 			}
 		}
-		item->compression_size = atoi(compression_buffer);
-		item->size -= strlen(compression_buffer) + 1; //tlsf is complaining because it can't properly free the buffer after this memory manipulation
-		for (unsigned int k = 0; k < item->size; k++)
-		{
-			((char*)item->buffer)[k] = ((char*)item->buffer)[k + strlen(compression_buffer) + 1];
-		}
-		//strcpy_s(item->buffer, item->size, ((char*) item->buffer) + strlen(compression_buffer) + 1);
-		//memmove(item->buffer, ((char*) item->buffer) + strlen(compression_buffer) + 1, item->compression_size + 1);
-		//item->size -= strlen(compression_buffer) + 1; //tlsf is complaining because it can't properly free the buffer after this memory manipulation
+		work->compression_size = atoi(compression_buffer);
+		work->size -= strlen(compression_buffer) + 1; 
+		for (unsigned int k = 0; k < work->size; k++)
+			((char*)work->buffer)[k] = ((char*)work->buffer)[k + strlen(compression_buffer) + 1];
 
-		queue_push(fs->compression_queue, item);
+		queue_push(fs->compression_queue, work);
 	}
 
-	if (item->null_terminate)
+	if (work->null_terminate)
 	{
-		((char*) item->buffer)[bytes_read] = 0;
+		((char*) work->buffer)[bytes_read] = 0;
 	}
 
-	if (!item->use_compression)
+	if (!work->use_compression)
 	{
-		event_signal(item->done);
+		event_signal(work->done);
 	}
 }
 
-static void file_write(fs_work_t* item)
+static void file_write(fs_work_t* work)
 {
 	wchar_t wide_path[1024];
-	if (MultiByteToWideChar(CP_UTF8, 0, item->path, -1, wide_path, sizeof(wide_path)) <= 0)
+	if (MultiByteToWideChar(CP_UTF8, 0, work->path, -1, wide_path, sizeof(wide_path)) <= 0)
 	{
-		item->result = -1;
+		work->result = -1;
 		return;
 	}
 	HANDLE handle = CreateFile(wide_path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
 	{
-		item->result = GetLastError();
+		work->result = GetLastError();
 		return;
 	}
 
 	DWORD compress_info_bytes_written = 0;
-	if (item->use_compression)
+	if (work->use_compression)
 	{
-		//need to establish convention that compressed files will have uncompressed size followed by \n at beginning of file
 		char uncompressed_size_str[16];
-		sprintf_s(uncompressed_size_str, 16, "%zd\n", item->compression_size);
+		sprintf_s(uncompressed_size_str, 16, "%zd\n", work->compression_size);
 		if(!WriteFile(handle, uncompressed_size_str, (DWORD) strlen(uncompressed_size_str), &compress_info_bytes_written, NULL))
 		{
 			debug_print(k_print_error, "Failed to write compression data to file, aborting write operation\n");
-			item->result = GetLastError();
+			work->result = GetLastError();
 			CloseHandle(handle);
 			return;
 		}
@@ -251,17 +241,17 @@ static void file_write(fs_work_t* item)
 	}
 
 	DWORD bytes_written = 0;
-	if(!WriteFile(handle, item->buffer, (DWORD) item->size, &bytes_written, NULL))
+	if(!WriteFile(handle, work->buffer, (DWORD) work->size, &bytes_written, NULL))
 	{
 		debug_print(k_print_error, "Failed to write data to file, aborting write operation\n");
-		item->result = GetLastError();
+		work->result = GetLastError();
 		CloseHandle(handle);
 		return;
 	}
 	
-	item->size = bytes_written + compress_info_bytes_written;
+	work->size = bytes_written + compress_info_bytes_written;
 	CloseHandle(handle);
-	event_signal(item->done);
+	event_signal(work->done);
 }
 
 static int file_thread_func(void* user)
@@ -305,6 +295,12 @@ static int compression_thread_func(void* user)
 				int buffer_size = LZ4_compressBound(work->size);
 				void* compression_buffer = heap_alloc(work->heap, buffer_size, 8);
 				int compressed_size = LZ4_compress_default(work->buffer, compression_buffer, work->size, buffer_size);
+				if (compressed_size == 0)
+				{
+					debug_print(k_print_error, "Failed to compress file; LZ4 returned 0");
+					event_signal(work->done);
+					break;
+				}
 				work->compression_size = work->size;
 				work->size = compressed_size;
 				work->buffer = compression_buffer;
@@ -318,7 +314,7 @@ static int compression_thread_func(void* user)
 				((char*) compression_buffer)[bytes_decompressed] = 0;
 				if (bytes_decompressed <= 0)
 				{
-					debug_print(k_print_error, "failed to decompress file; LZ4 returned error code %d\n", bytes_decompressed);
+					debug_print(k_print_error, "Failed to decompress file; LZ4 returned%d\n", bytes_decompressed);
 					event_signal(work->done);
 					break;
 				}

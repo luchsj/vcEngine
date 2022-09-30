@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-//asynchronous read/write file system
+//asynchronous read/write file system with LZ4 compression
+//compressed files will be stored with the size of the uncompressed file and a newline character preceeding the compressed data
 
 //handle to file work
 typedef struct fs_work_t fs_work_t;
@@ -10,7 +11,6 @@ typedef struct fs_work_t fs_work_t;
 typedef struct fs_t fs_t;
 
 typedef struct heap_t heap_t;
-
 
 //create new file system.
 //given heap will be used to allocate space for queue and work buffers
@@ -24,12 +24,14 @@ void fs_destroy(fs_t* fs);
 //file at the specified path will be read in full
 //memory for the file will be allocated out of the provided heap
 //it's the call's responsibility to free said memory
+//if use_compression, fs_read will attempt to parse compression data before decompressing the file and returning the uncompressed data
 //returns a work object
 fs_work_t* fs_read(fs_t* fs, const char* path, heap_t* heap, bool null_terminate, bool use_compression);
 
 //queue a file write
 //file at the specified path will be read in full
 //memory for the file will be allocated out of the allocated heap
+//if use_compression, the data will be compressed and the uncompressed size of the data will be written to the target file before the actual data
 fs_work_t* fs_write(fs_t* fs, const char* path, const void* buffer, size_t size, bool use_compression);
 
 //if true, file work is complete
