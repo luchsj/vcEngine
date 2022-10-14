@@ -2,6 +2,10 @@
 #include "debug.h"
 #include "fs.h"
 #include "mutex.h"
+#include "thread.h"
+#include "timer.h"
+#include "timer_object.h"
+#include "trace.h"
 #include "wm.h"
 #include "heap.h"
 #include "thread.h"
@@ -21,8 +25,7 @@ typedef struct thread_data_t
 
 #include <windows.h>
 
-static void homework1_test();
-static void homework2_test();
+static void homework3_test();
 
 int main(int argc, const char* argv[])
 {
@@ -30,16 +33,7 @@ int main(int argc, const char* argv[])
 	debug_set_print_mask(k_print_info | k_print_warning | k_print_error);
 	debug_system_init();
 
-	//hw1_test();
-	hw2_test();
-
-	heap_t* heap = heap_create(2 * 1024 * 1024);
-	wm_window_t* window = wm_create(heap);
-
-	uint32_t mask = wm_get_mouse_mask(window);
-
-	homework1_test();
-	homework2_test();
+	homework3_test();
 
 	debug_set_print_mask(k_print_info | k_print_warning | k_print_error);
 
@@ -72,59 +66,65 @@ int main(int argc, const char* argv[])
 
 	debug_system_uninit();
 
-	return EXIT_SUCCESS;
+static void homework3_slower_function(trace_t* trace)
+{
+	trace_duration_push(trace, "homework3_slower_function");
+	thread_sleep(200);
+	trace_duration_pop(trace);
 }
 
-static void* hw1_alloc1(heap_t* heap){return heap_alloc(heap, 16*1024, 8);}
-static void* hw1_alloc2(heap_t* heap){return heap_alloc(heap, 256, 8);}
-static void* hw1_alloc3(heap_t* heap){return heap_alloc(heap, 32*1024, 8);}
+static void homework3_slow_function(trace_t* trace)
+{
+	trace_duration_push(trace, "homework3_slow_function");
+	thread_sleep(100);
+	homework3_slower_function(trace);
+	trace_duration_pop(trace);
+}
 
-static void hw1_test()
+static int homework3_test_func(void* data)
+{
+	trace_t* trace = data;
+	homework3_slow_function(trace);
+	return 0;
+}
+
+static void homework3_test()
 {
 	heap_t* heap = heap_create(4096);
-	void* block1 = hw1_alloc1(heap);
-	hw1_alloc2(heap);
-	hw1_alloc3(heap);
-	heap_free(heap, block1);
-	heap_destroy(heap);
-}
 
-static void hw2_test_internal(heap_t* heap, fs_t* fs, bool use_compression)
-{
-	const char* write_data = "hello world!";
-//	char compressed_buffer[312]
-//	int compressed_size = L4Z_compredd_default(write_data, dst, (int) strlen(write_data), int sizeof(compressed_buffer))
-//	char result[123214];
-//	lz4_decompress_safe(compressed_buffer, result, compressed_size, sizeof(result));
-//	will need to get size of compressed file, meaning we need to store it in the file somehow
-	fs_work_t* write_work = fs_write(fs, "foo.bar", write_data, strlen(write_data), use_compression);
-	fs_work_t* read_work = fs_read(fs, "foo.bar", heap, true, use_compression);
+	// Create the tracing system with at least space for 100 *captured* events.
+	// Each call to trace_duration_push is an event.
+	// Each call to trace_duration_pop is an event.
+	// Before trace_capture_start is called, and after trace_capture_stop is called,
+	// duration events should not be generated.
+	trace_t* trace = trace_create(heap, 100);
 
-	assert(fs_work_get_result(write_work) == 0);
-	assert(fs_work_get_size(write_work) == huck_finn_len);
+	// Capturing has *not* started so these calls can safely be ignored.
+	trace_duration_push(trace, "should be ignored");
+	trace_duration_pop(trace);
 
-	char* read_data = fs_work_get_buffer(read_work);
-	assert(read_data && strcmp(read_data, "hello world!") == 0);
-	assert(fs_work_get_result(read_work) == 0);
-	assert(fs_work_get_size(read_work) == huck_finn_len);
+	// Start capturing events.
+	// Eventually we will want to write events to a file -- "trace.json".
+	// However we should *not* write to the file for each call to trace_duration_push or
+	// trace_duration_pop. That would be much too slow. Instead, events should be buffered
+	// (up to event_capacity) before writing to a file. For purposes of this homework,
+	// it is entirely fine if you only capture the first event_capacity count events and
+	// ignore any additional events.
+	trace_capture_start(trace, "trace.json");
 
-	fs_work_destroy(read_work);
-	fs_work_destroy(write_work);
+	// Create a thread that will push/pop duration events.
+	thread_t* thread = thread_create(homework3_test_func, trace);
 
-	heap_free(heap, read_data);
-}
+	// Call a function that will push/pop duration events.
+	homework3_slow_function(trace);
 
-static void hw2_test()
-{
-	heap_t* heap = heap_create(4096);
-	fs_t* fs = fs_create(heap, 16);
+	// Wait for thread to finish.
+	thread_destroy(thread);
 
-	const bool disable_compression = false;
-	hw2_test_internal(heap, fs, disable_compression);
+	// Finish capturing. Write the trace.json file in Chrome tracing format.
+	trace_capture_stop(trace);
 
-	const bool enable_compression = false;
-	hw2_test_internal(heap, fs, enable_compression);
+	trace_destroy(trace);
 
-	fs_destroy(fs);
 	heap_destroy(heap);
 }

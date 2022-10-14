@@ -24,3 +24,8 @@ int thread_destroy(thread_t* thread)
 	CloseHandle(thread);
 	return exit;
 }
+
+void thread_sleep(uint32_t ms)
+{
+	Sleep(ms);
+}
