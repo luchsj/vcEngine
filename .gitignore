@@ -55,5 +55,6 @@ dkms.conf
 /src/.vs/ga2022/v17/Browse.VC.opendb
 /src/.vs/ga2022/v17/Browse.VC.db-wal
 /src/.vs/ga2022/v17/Browse.VC.db-shm
+/src/.vs/ga2022/v17/
 /src/.vs/ga2022/FileContentIndex
 /src/x64/Debug
