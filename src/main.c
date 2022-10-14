@@ -41,22 +41,32 @@ int main(int argc, const char* argv[])
 	homework1_test();
 	homework2_test();
 
-	debug_set_print_mask(k_print_warning | k_print_error);
+	debug_set_print_mask(k_print_info | k_print_warning | k_print_error);
 
 	heap_t* heap = heap_create(2 * 1024 * 1024);
 	wm_window_t* window = wm_create(heap);
+	timer_object_t* root_time = timer_object_create(heap, NULL);
 
 	// THIS IS THE MAIN LOOP!
-	/*
 	while (!wm_pump(window))
 	{
+		timer_object_update(root_time);
+
 		int x, y;
 		wm_get_mouse_move(window, &x, &y);
 		uint32_t mask = wm_get_mouse_mask(window);
-		debug_print(k_print_info, "MOUSE mask=%x move=%dx%x\n", wm_get_mouse_mask(window), x, y);
+
+		uint32_t now = timer_ticks_to_ms(timer_get_ticks());
+		debug_print(
+			k_print_info,
+			"T=%dms, MOUSE mask=%x move=%dx%d\n",
+			timer_object_get_ms(root_time),
+			mask,
+			x, y);
 	}
 	*/
 
+	timer_object_destroy(root_time);
 	wm_destroy(window);
 	heap_destroy(heap);
 
@@ -91,12 +101,12 @@ static void hw2_test_internal(heap_t* heap, fs_t* fs, bool use_compression)
 	fs_work_t* read_work = fs_read(fs, "foo.bar", heap, true, use_compression);
 
 	assert(fs_work_get_result(write_work) == 0);
-	assert(fs_work_get_size(write_work) == 12);
+	assert(fs_work_get_size(write_work) == huck_finn_len);
 
 	char* read_data = fs_work_get_buffer(read_work);
 	assert(read_data && strcmp(read_data, "hello world!") == 0);
 	assert(fs_work_get_result(read_work) == 0);
-	assert(fs_work_get_size(read_work) == 12);
+	assert(fs_work_get_size(read_work) == huck_finn_len);
 
 	fs_work_destroy(read_work);
 	fs_work_destroy(write_work);

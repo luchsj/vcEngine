@@ -1,4 +1,6 @@
-//atomic operations on 32-bit integers
+#pragma once
+
+// Atomic operations on 32-bit integers.
 
 //increment a number atomically
 //returns previous value of number

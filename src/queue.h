@@ -1,4 +1,6 @@
-//thread-safe queue container
+#pragma once
+
+// Thread-safe Queue container
 
 // Handle to a thread-safe queue.
 typedef struct queue_t queue_t;

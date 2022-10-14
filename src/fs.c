@@ -147,13 +147,15 @@ static void file_read(fs_work_t* item)
 	wchar_t wide_path[1024];
 	if (MultiByteToWideChar(CP_UTF8, 0, item->path, -1, wide_path, sizeof(wide_path)) <= 0)
 	{
-		item->result = -1;
+		work->result = -1;
+		event_signal(work->done);
 		return;
 	}
 	HANDLE handle = CreateFile(wide_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
 	{
-		item->result = GetLastError();
+		work->result = GetLastError();
+		event_signal(work->done);
 		return;
 	}
 
@@ -161,6 +163,7 @@ static void file_read(fs_work_t* item)
 	{
 		item->result = GetLastError();
 		CloseHandle(handle);
+		event_signal(work->done);
 		return;
 	}
 	item->buffer = heap_alloc(item->heap, item->null_terminate ? item->size + 1 : item->size, 8);
@@ -170,6 +173,7 @@ static void file_read(fs_work_t* item)
 	{
 		item->result = GetLastError();
 		CloseHandle(handle);
+		event_signal(work->done);
 		return;
 	}
 
@@ -195,18 +199,26 @@ static void file_read(fs_work_t* item)
 	//optionally compress in fs_write
 }
 
-static void file_write(fs_work_t* item)
+int get_hash(void* address, int bucket_count)
+{
+	return (intptr_t)address % bucket_count;
+}
+
+
+static void file_write(fs_work_t* work)
 {
 	wchar_t wide_path[1024];
 	if (MultiByteToWideChar(CP_UTF8, 0, item->path, -1, wide_path, sizeof(wide_path)) <= 0)
 	{
-		item->result = -1;
+		work->result = -1;
+		event_signal(work->done);
 		return;
 	}
 	HANDLE handle = CreateFile(wide_path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
 	{
-		item->result = GetLastError();
+		work->result = GetLastError();
+		event_signal(work->done);
 		return;
 	}
 
@@ -215,6 +227,7 @@ static void file_write(fs_work_t* item)
 	{
 		item->result = GetLastError();
 		CloseHandle(handle);
+		event_signal(work->done);
 		return;
 	}
 
