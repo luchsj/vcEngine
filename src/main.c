@@ -29,6 +29,7 @@ static void homework3_test();
 
 int main(int argc, const char* argv[])
 {
+	timer_startup();
 	//debug_install_exception_handler();
 	debug_set_print_mask(k_print_info | k_print_warning | k_print_error);
 	debug_system_init();
@@ -58,13 +59,13 @@ int main(int argc, const char* argv[])
 			mask,
 			x, y);
 	}
-	*/
 
 	timer_object_destroy(root_time);
 	wm_destroy(window);
 	heap_destroy(heap);
 
 	debug_system_uninit();
+}
 
 static void homework3_slower_function(trace_t* trace)
 {
