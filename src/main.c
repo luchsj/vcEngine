@@ -72,7 +72,7 @@ int main(int argc, const char* argv[])
 static void homework3_slower_function(trace_t* trace)
 {
 	trace_duration_push(trace, "homework3_slower_function");
-	thread_sleep(200);
+	thread_sleep(2000);
 	trace_duration_pop(trace);
 }
 
@@ -130,5 +130,6 @@ static void homework3_test()
 
 	trace_destroy(trace);
 
+	fs_destroy(fs);
 	heap_destroy(heap);
 }

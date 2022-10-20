@@ -71,6 +71,7 @@ void trace_destroy(trace_t* trace)
 		heap_free(trace->heap, trace->durations[k]);
 	}
 	heap_free(trace->heap, trace->durations);
+	heap_free(trace->heap, trace->write_path);
 	semaphore_destroy(trace->semaphore);
 
 	heap_free(trace->heap, trace);
@@ -129,9 +130,7 @@ void trace_duration_pop(trace_t* trace)
 	strcpy_s(temp->name, strlen(trace->active_durations[trace->active_duration_count]->name) +1, trace->active_durations[trace->active_duration_count]->name);
 	temp->ph = 'E';
 	temp->process_id = 0;
-	temp->thread_id = GetCurrentThreadId();
-	//should also be adding to durations here to keep rtack of begin times
-
+	temp->thread_id = trace->active_durations[trace->active_duration_count]->thread_id;
 	trace->durations[trace->duration_count] = temp;
 	trace->active_durations[trace->active_duration_count] = NULL;
 	trace->duration_count++;
@@ -157,20 +156,22 @@ void trace_capture_stop(trace_t* trace)
 	for (uint32_t k = 0; k < trace->duration_count; k++)
 	{
 		char temp[TRACE_TEMP_BUFFER_SIZE];
-		sprintf_s(temp, TRACE_TEMP_BUFFER_SIZE, "\t{\"%s\":\",\"ph\":\"%c\",\"pid\":0,\"tid\":%u,\"ts\":\"%u\"},\n", 
+		sprintf_s(temp, TRACE_TEMP_BUFFER_SIZE, "\t\t{\"name\":\"%s\",\"ph\":\"%c\",\"pid\":0,\"tid\":\"%u\",\"ts\":\"%u\"},\n", 
 			trace->durations[k]->name, trace->durations[k]->ph, trace->durations[k]->thread_id, trace->durations[k]->time);
 		if (buffer_length + strlen(temp)+ 1 > buffer_capacity)
 		{
 			buffer_capacity *= 2;
-			json_buffer = heap_realloc(trace->heap, json_buffer, buffer_capacity, 8); //i think it's happening here. remove the work wait to see why
+			json_buffer = heap_realloc(trace->heap, json_buffer, buffer_capacity, 8); //confirmed that tlsf isn't getting lost in heap_realloc
 		}
 		memcpy_s(json_buffer + buffer_length, buffer_capacity, temp, strlen(temp) + 1);
 		buffer_length = (uint32_t) strlen(json_buffer);
 	}
 	buffer_length -= 2;
-	sprintf_s(json_buffer + buffer_length, buffer_capacity, "\n\t]\t\n}\n\0");
+	char* temp = "\n\t]\t\n}\n";
+	memcpy_s(json_buffer + buffer_length, buffer_capacity, temp, strlen(temp) + 1);
 	buffer_length = (uint32_t) strlen(json_buffer);
 	fs_work_t* work = fs_write(trace->fs, trace->write_path, json_buffer, buffer_length, false);
 	fs_work_wait(work); //is this ok?
+	fs_work_destroy(work);
 	heap_free(trace->heap, json_buffer);
 }

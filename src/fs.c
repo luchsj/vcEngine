@@ -99,7 +99,6 @@ fs_work_t* fs_write(fs_t* fs, const char* path, const void* buffer, size_t size,
 	}
 
 	return work;
-
 }
 
 bool fs_work_is_done(fs_work_t* work)
