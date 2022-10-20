@@ -1,0 +1,12 @@
+{
+	"displayTimeUnit": "ns", "traceEvents": [
+	{"homework3_slow_function":","ph":"B","pid":0,"tid":21608,"ts":"72"},
+	{"homework3_slow_function":","ph":"B","pid":0,"tid":14864,"ts":"72"},
+	{"homework3_slower_function":","ph":"B","pid":0,"tid":14864,"ts":"174"},
+	{"homework3_slower_function":","ph":"B","pid":0,"tid":21608,"ts":"174"},
+	{"homework3_slower_function":","ph":"E","pid":0,"tid":21608,"ts":"379"},
+	{"homework3_slower_function":","ph":"E","pid":0,"tid":14864,"ts":"379"},
+	{"homework3_slow_function":","ph":"E","pid":0,"tid":21608,"ts":"379"},
+	{"homework3_slow_function":","ph":"E","pid":0,"tid":14864,"ts":"379"}
+	]	
+}
