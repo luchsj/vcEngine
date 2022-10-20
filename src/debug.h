@@ -31,6 +31,9 @@ int debug_backtrace(void** stack, int stack_cap, int offset);
 //must be called after debug_system_init!
 void debug_record_trace(void* address, uint64_t mem_size); 
 
+//remove previously recorded trace at the given address.
+void debug_remove_trace(void* address);
+
 //print the names of functions in the stack previously recorded the memory at this address
 void debug_print_trace(void* address);
 

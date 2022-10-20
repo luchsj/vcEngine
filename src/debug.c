@@ -64,7 +64,6 @@ void debug_print(uint32_t type, _Printf_format_string_ const char* format, ...)
 {
 	if((s_mask & type) == 0)
 		return;
-	}
 
 	va_list args;
 	va_start(args, format);
@@ -136,6 +135,22 @@ void debug_record_trace(void* address, uint64_t mem_size)
 	stack_count[place]++;
 }
 
+void debug_remove_trace(void* address)
+{
+	uint64_t place = addr_hash(address);
+	for (int k = 0; k < stack_count[place]; k++)
+	{
+		if (stack_record[place][k].address == (uintptr_t)address)
+		{
+			for(int c = 0; c < stack_record[place][k].trace_size; c++)
+				free(stack_record[place][k].trace_stack[c]);
+			free(stack_record[place][k].trace_stack);
+			stack_record[place][stack_count[place]].address = 0;
+			return;
+		}
+	}
+}
+
 void debug_print_trace(void* address)
 {
 	//find address in trace record
@@ -155,12 +170,12 @@ void debug_print_trace(void* address)
 	}
 	if (!trace)
 	{
-		debug_print(k_print_warning, "debug_print_trace failed to find given address in stack record");
+		debug_print(k_print_warning, "debug_print_trace failed to find given address in stack record\n");
 		return;
 	}
 
 	//if trace found, print call stack
-	debug_print(k_print_warning, "Memory leak of size %lu bytes with call stack:\n", mem_size);
+	debug_print(k_print_warning, "Memory leak of size %u bytes with call stack:\n", mem_size);
 	for(int k = 0; k < trace_size; k++)
 	{ 
 		//get info from symbols
@@ -177,7 +192,7 @@ void debug_print_trace(void* address)
 			debug_print(k_print_error, "debug_print_trace failed to retrieve symbol info; SymGetSym error %d\n", GetLastError());
 		}
 
-		if (!SymGetLineFromAddr64(GetCurrentProcess(), trace_addr, &displacement, &line))
+		if (!SymGetLineFromAddr64(GetCurrentProcess(), trace_addr, (PDWORD) & displacement, &line))
 {
 			debug_print(k_print_error, "debug_print_trace failed to retrieve symbol info; SymGetLine error %d\n", GetLastError());
 		}

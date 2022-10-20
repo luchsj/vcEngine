@@ -62,12 +62,25 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 
 		address = tlsf_memalign(heap->tlsf, alignment, size);
 	}
-
 	debug_print(k_print_debug, "memory allocated at address %p\n", address);
 	debug_record_trace(address, size);
 	mutex_unlock(heap->mutex);
 
 	return address;
+}
+
+void* heap_realloc(heap_t* heap, void* prev, size_t size, size_t alignment)
+{
+	//todo: in place realloc?
+	mutex_lock(heap->mutex);
+	void* temp = heap_alloc(heap, size, alignment);
+	memcpy_s(temp, size, prev, size); //how do we get the old size?
+	//heap_free(heap, prev);
+	tlsf_free(heap->tlsf, prev);
+	debug_remove_trace(prev);
+	debug_record_trace(temp, size);
+	mutex_unlock(heap->mutex);
+	return temp;
 }
 
 void heap_free(heap_t* heap, void* address)

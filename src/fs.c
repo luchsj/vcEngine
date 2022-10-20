@@ -111,7 +111,6 @@ void fs_work_wait(fs_work_t* work)
 {
 	if(work)
 		event_wait(work->done);
-	}
 }
 
 int fs_work_get_result(fs_work_t* work)
@@ -142,10 +141,10 @@ void fs_work_destroy(fs_work_t* work)
 	}
 }
 
-static void file_read(fs_work_t* item)
+static void file_read(fs_work_t* work)
 {
 	wchar_t wide_path[1024];
-	if (MultiByteToWideChar(CP_UTF8, 0, item->path, -1, wide_path, sizeof(wide_path)) <= 0)
+	if (MultiByteToWideChar(CP_UTF8, 0, work->path, -1, wide_path, sizeof(wide_path)) <= 0)
 	{
 		work->result = -1;
 		event_signal(work->done);
@@ -159,38 +158,38 @@ static void file_read(fs_work_t* item)
 		return;
 	}
 
-	if (!GetFileSizeEx(handle, (PLARGE_INTEGER)&item->size))
+	if (!GetFileSizeEx(handle, (PLARGE_INTEGER)&work->size))
 	{
-		item->result = GetLastError();
+		work->result = GetLastError();
 		CloseHandle(handle);
 		event_signal(work->done);
 		return;
 	}
-	item->buffer = heap_alloc(item->heap, item->null_terminate ? item->size + 1 : item->size, 8);
+	work->buffer = heap_alloc(work->heap, work->null_terminate ? work->size + 1 : work->size, 8);
 
 	DWORD bytes_read = 0; 
-	if(!ReadFile(handle, item->buffer, (DWORD) item->size, &bytes_read, NULL))
+	if(!ReadFile(handle, work->buffer, (DWORD) work->size, &bytes_read, NULL))
 	{
-		item->result = GetLastError();
+		work->result = GetLastError();
 		CloseHandle(handle);
 		event_signal(work->done);
 		return;
 	}
 
-	item->size = bytes_read;
-	if (item->null_terminate)
+	work->size = bytes_read;
+	if (work->null_terminate)
 	{
-		((char*) item->buffer)[bytes_read] = 0;
+		((char*) work->buffer)[bytes_read] = 0;
 	}
 	CloseHandle(handle);
 
-	if (item->use_compression)
+	if (work->use_compression)
 	{
 		//hw2
 	}
 	else
 	{
-		event_signal(item->done);
+		event_signal(work->done);
 	}
 
 	//optionally decompress data in another function
@@ -208,7 +207,7 @@ int get_hash(void* address, int bucket_count)
 static void file_write(fs_work_t* work)
 {
 	wchar_t wide_path[1024];
-	if (MultiByteToWideChar(CP_UTF8, 0, item->path, -1, wide_path, sizeof(wide_path)) <= 0)
+	if (MultiByteToWideChar(CP_UTF8, 0, work->path, -1, wide_path, sizeof(wide_path)) <= 0)
 	{
 		work->result = -1;
 		event_signal(work->done);
@@ -223,25 +222,25 @@ static void file_write(fs_work_t* work)
 	}
 
 	DWORD bytes_written = 0;
-	if(!WriteFile(handle, item->buffer, (DWORD) item->size, &bytes_written, NULL))
+	if(!WriteFile(handle, work->buffer, (DWORD) work->size, &bytes_written, NULL))
 	{
-		item->result = GetLastError();
+		work->result = GetLastError();
 		CloseHandle(handle);
 		event_signal(work->done);
 		return;
 	}
 
-	item->size = bytes_written;
+	work->size = bytes_written;
 	CloseHandle(handle);
 
 	//file on git doesn't have this?
-	if (item->use_compression)
+	if (work->use_compression)
 	{
 		//hw2 compress
 	}
 	else
 	{
-		event_signal(item->done);
+		event_signal(work->done);
 	}
 
 	//optionally compress data in another function
