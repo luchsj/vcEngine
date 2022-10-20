@@ -1,4 +1,5 @@
-#include <stdlib.h>
+#pragma once
+
 #include <stdbool.h>
 
 //asynchronous read/write file system with LZ4 compression

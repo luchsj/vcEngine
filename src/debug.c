@@ -1,4 +1,5 @@
 #include "debug.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -43,6 +44,7 @@ static LONG debug_exception_handler(LPEXCEPTION_POINTERS ExceptionInfo)
 		MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file, MiniDumpWithThreadInfo, &mini_exception, NULL, NULL);
 		CloseHandle(file);
 	}
+
 	return EXCEPTION_EXECUTE_HANDLER;
 }
 
@@ -62,6 +64,7 @@ void debug_print(uint32_t type, _Printf_format_string_ const char* format, ...)
 {
 	if((s_mask & type) == 0)
 		return;
+	}
 
 	va_list args;
 	va_start(args, format);
@@ -175,7 +178,7 @@ void debug_print_trace(void* address)
 		}
 
 		if (!SymGetLineFromAddr64(GetCurrentProcess(), trace_addr, &displacement, &line))
-		{
+{
 			debug_print(k_print_error, "debug_print_trace failed to retrieve symbol info; SymGetLine error %d\n", GetLastError());
 		}
 

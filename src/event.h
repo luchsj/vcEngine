@@ -1,4 +1,5 @@
-// event thread synchronization
+#pragma once
+
 #include <stdbool.h>
 
 //handle to an event

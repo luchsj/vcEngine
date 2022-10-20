@@ -1,6 +1,7 @@
 #include "fs.h"
 #include "debug.h"
 #include "heap.h"
+#include "queue.h"
 #include "thread.h"
 #include "event.h"
 #include "queue.h"
@@ -96,7 +97,9 @@ fs_work_t* fs_write(fs_t* fs, const char* path, const void* buffer, size_t size,
 	if(use_compression)
 		queue_push(fs->compression_queue, work);
 	else
+	{
 		queue_push(fs->file_queue, work);
+	}
 
 	return work;
 
@@ -162,6 +165,7 @@ static void file_read(fs_work_t* work, fs_t* fs)
 	{
 		work->result = GetLastError();
 		CloseHandle(handle);
+		event_signal(work->done);
 		return;
 	}
 	work->buffer = heap_alloc(work->heap, work->null_terminate ? work->size + 1 : work->size, 8);
@@ -171,6 +175,7 @@ static void file_read(fs_work_t* work, fs_t* fs)
 	{
 		work->result = GetLastError();
 		CloseHandle(handle);
+		event_signal(work->done);
 		return;
 	}
 
@@ -261,7 +266,7 @@ static int file_thread_func(void* user)
 		{
 			break;
 		}
-
+		
 		switch (work->op)
 		{
 			case k_fs_work_op_read:

@@ -116,6 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -138,6 +139,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;Dbghelp.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -152,11 +154,18 @@
     <ClCompile Include="l4z\lz4hc.c" />
     <ClCompile Include="l4z\xxhash.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="mat4f.c" />
     <ClCompile Include="mutex.c" />
+    <ClCompile Include="quatf.c" />
     <ClCompile Include="queue.c" />
     <ClCompile Include="semaphore.c" />
     <ClCompile Include="thread.c" />
+    <ClCompile Include="timeofday.c" />
+    <ClCompile Include="timer.c" />
+    <ClCompile Include="timer_object.c" />
     <ClCompile Include="tlsf\tlsf.c" />
+    <ClCompile Include="trace.c" />
+    <ClCompile Include="transform.c" />
     <ClCompile Include="wm.c" />
   </ItemGroup>
   <ItemGroup>
@@ -172,10 +181,17 @@
     <ClInclude Include="l4z\lz4hc.h" />
     <ClInclude Include="l4z\xxhash.h" />
     <ClInclude Include="mutex.h" />
+    <ClInclude Include="quatf.h" />
     <ClInclude Include="queue.h" />
     <ClInclude Include="semaphore.h" />
     <ClInclude Include="thread.h" />
+    <ClInclude Include="timeofday.h" />
+    <ClInclude Include="timer.h" />
+    <ClInclude Include="timer_object.h" />
     <ClInclude Include="tlsf\tlsf.h" />
+    <ClInclude Include="trace.h" />
+    <ClInclude Include="transform.h" />
+    <ClInclude Include="vec3f.h" />
     <ClInclude Include="wm.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

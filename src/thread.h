@@ -1,7 +1,19 @@
+#pragma once
+
+#include <stdint.h>
+
+// Threading support.
+
+// Handle to a thread.
 typedef struct thread_t thread_t;
 
 //create a new thread that performs the given function
 thread_t* thread_create(int (*func) (void*), void* data);
 
-//destroy an existing thread
-int thread_destroy(thread_t* thread);
+// Waits for a thread to complete and destroys it.
+// Returns the thread's exit code.
+int thread_destroy(thread);
+
+// Puts the calling thread to sleep for the specified number of milliseconds.
+// Thread will sleep for *approximately* the specified time.
+void thread_sleep(uint32_t ms);

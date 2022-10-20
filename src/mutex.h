@@ -1,3 +1,8 @@
+#pragma once
+
+// Recursive mutex thread synchronization
+
+// Handle to a mutex.
 typedef struct mutex_t mutex_t;
 
 //creates a new mutex
