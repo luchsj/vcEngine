@@ -76,8 +76,8 @@ void* heap_realloc(heap_t* heap, void* prev, size_t size, size_t alignment)
 	void* temp = heap_alloc(heap, size, alignment);
 	memcpy_s(temp, size, prev, size); //how do we get the old size?
 	//heap_free(heap, prev);
-	tlsf_free(heap->tlsf, prev);
 	debug_remove_trace(prev);
+	tlsf_free(heap->tlsf, prev);
 	debug_record_trace(temp, size);
 	mutex_unlock(heap->mutex);
 	return temp;

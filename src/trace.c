@@ -17,7 +17,7 @@
 typedef struct duration_t
 {
 	char* name;
-	char** categories;
+	//char** categories;
 	char ph;
 	//uint64_t begin_time;
 	//uint64_t end_time;
@@ -35,11 +35,12 @@ typedef struct trace_t
 	uint32_t duration_cap;
 	semaphore_t* semaphore;
 	heap_t* heap;
+	fs_t* fs;
 	char* write_path;
 	int trace_active;
 }trace_t;
 
-trace_t* trace_create(heap_t* heap, int event_capacity)
+trace_t* trace_create(heap_t* heap, fs_t* fs, int event_capacity)
 {
 	trace_t* trace = heap_alloc(heap, sizeof(trace_t), 8);
 	trace->duration_cap = event_capacity;
@@ -49,6 +50,7 @@ trace_t* trace_create(heap_t* heap, int event_capacity)
 	trace->active_durations = heap_alloc(heap, sizeof(duration_t*) * trace->duration_cap, 8); //FILO array of active durations
 	trace->trace_active = 0;
 	trace->heap = heap;
+	trace->fs = fs;
 	trace->semaphore = semaphore_create(1, 1);
 
 	return trace;
@@ -56,6 +58,21 @@ trace_t* trace_create(heap_t* heap, int event_capacity)
 
 void trace_destroy(trace_t* trace)
 {
+	//we can declare that in main and not. do this. yeah do that
+	for(uint32_t k = 0; k < trace->active_duration_count; k++)
+	{
+		heap_free(trace->heap, trace->active_durations[k]->name);
+		heap_free(trace->heap, trace->active_durations[k]);
+	}
+	heap_free(trace->heap, trace->active_durations);
+	for(uint32_t k = 0; k < trace->duration_count; k++)
+	{
+		heap_free(trace->heap, trace->durations[k]->name);
+		heap_free(trace->heap, trace->durations[k]);
+	}
+	heap_free(trace->heap, trace->durations);
+	semaphore_destroy(trace->semaphore);
+
 	heap_free(trace->heap, trace);
 }
 
@@ -145,7 +162,7 @@ void trace_capture_stop(trace_t* trace)
 		if (buffer_length + strlen(temp)+ 1 > buffer_capacity)
 		{
 			buffer_capacity *= 2;
-			json_buffer = heap_realloc(trace->heap, json_buffer, buffer_capacity, 8);
+			json_buffer = heap_realloc(trace->heap, json_buffer, buffer_capacity, 8); //i think it's happening here. remove the work wait to see why
 		}
 		memcpy_s(json_buffer + buffer_length, buffer_capacity, temp, strlen(temp) + 1);
 		buffer_length = (uint32_t) strlen(json_buffer);
@@ -153,8 +170,7 @@ void trace_capture_stop(trace_t* trace)
 	buffer_length -= 2;
 	sprintf_s(json_buffer + buffer_length, buffer_capacity, "\n\t]\t\n}\n\0");
 	buffer_length = (uint32_t) strlen(json_buffer);
-	fs_t* file_sys = fs_create(trace->heap, 1); //is this a good idea? if we make an active file system a prerequisite to use tracing,
-												//we can declare that in main and not. do this. yeah do that
-	fs_write(file_sys, trace->write_path, json_buffer, buffer_length, false);
-	fs_destroy(file_sys);
+	fs_work_t* work = fs_write(trace->fs, trace->write_path, json_buffer, buffer_length, false);
+	fs_work_wait(work); //is this ok?
+	heap_free(trace->heap, json_buffer);
 }

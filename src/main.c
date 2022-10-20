@@ -94,13 +94,14 @@ static int homework3_test_func(void* data)
 static void homework3_test()
 {
 	heap_t* heap = heap_create(4096);
+	fs_t* fs = fs_create(heap, 1);
 
 	// Create the tracing system with at least space for 100 *captured* events.
 	// Each call to trace_duration_push is an event.
 	// Each call to trace_duration_pop is an event.
 	// Before trace_capture_start is called, and after trace_capture_stop is called,
 	// duration events should not be generated.
-	trace_t* trace = trace_create(heap, 100);
+	trace_t* trace = trace_create(heap, fs, 100);
 
 	// Capturing has *not* started so these calls can safely be ignored.
 	trace_duration_push(trace, "should be ignored");
