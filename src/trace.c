@@ -17,10 +17,7 @@
 typedef struct duration_t
 {
 	char* name;
-	//char** categories;
 	char ph;
-	//uint64_t begin_time;
-	//uint64_t end_time;
 	uint32_t time;
 	uint32_t process_id;
 	uint32_t thread_id;
@@ -28,7 +25,7 @@ typedef struct duration_t
 
 typedef struct trace_t
 {
-	duration_t** durations; //needs to be *** to so that we can track durations for each thread in the process. or is that too memory intensive?
+	duration_t** durations;
 	duration_t** active_durations;
 	uint32_t duration_count;
 	uint32_t active_duration_count;
@@ -47,7 +44,7 @@ trace_t* trace_create(heap_t* heap, fs_t* fs, int event_capacity)
 	trace->duration_count = 0;
 	trace->active_duration_count = 0;
 	trace->durations = heap_alloc(heap, sizeof(duration_t*) * trace->duration_cap, 8);
-	trace->active_durations = heap_alloc(heap, sizeof(duration_t*) * trace->duration_cap, 8); //FILO array of active durations
+	trace->active_durations = heap_alloc(heap, sizeof(duration_t*) * trace->duration_cap, 8);
 	trace->trace_active = 0;
 	trace->heap = heap;
 	trace->fs = fs;
@@ -58,7 +55,6 @@ trace_t* trace_create(heap_t* heap, fs_t* fs, int event_capacity)
 
 void trace_destroy(trace_t* trace)
 {
-	//we can declare that in main and not. do this. yeah do that
 	for(uint32_t k = 0; k < trace->active_duration_count; k++)
 	{
 		heap_free(trace->heap, trace->active_durations[k]->name);
@@ -98,7 +94,6 @@ void trace_duration_push(trace_t* trace, const char* name)
 	temp->time = timer_ticks_to_ms(timer_get_ticks());
 	temp->process_id = 0;
 	temp->thread_id = GetCurrentThreadId();
-	//should also be adding to durations here to keep rtack of begin times
 
 	semaphore_aquire(trace->semaphore);
 	trace->durations[trace->duration_count] = temp;
@@ -147,7 +142,6 @@ void trace_capture_start(trace_t* trace, const char* path)
 void trace_capture_stop(trace_t* trace)
 {
 	trace->trace_active = 0;
-	//char json_buffer[MAX_BUFFER_SIZE]; //sucks and is bad
 	char* json_buffer = heap_alloc(trace->heap, TRACE_BUFFER_INIT_SIZE, 8);
 	uint32_t buffer_capacity = TRACE_BUFFER_INIT_SIZE;
 	uint32_t buffer_length = 0;
@@ -161,7 +155,7 @@ void trace_capture_stop(trace_t* trace)
 		if (buffer_length + strlen(temp)+ 1 > buffer_capacity)
 		{
 			buffer_capacity *= 2;
-			json_buffer = heap_realloc(trace->heap, json_buffer, buffer_capacity, 8); //confirmed that tlsf isn't getting lost in heap_realloc
+			json_buffer = heap_realloc(trace->heap, json_buffer, buffer_capacity, 8);
 		}
 		memcpy_s(json_buffer + buffer_length, buffer_capacity, temp, strlen(temp) + 1);
 		buffer_length = (uint32_t) strlen(json_buffer);
@@ -171,7 +165,7 @@ void trace_capture_stop(trace_t* trace)
 	memcpy_s(json_buffer + buffer_length, buffer_capacity, temp, strlen(temp) + 1);
 	buffer_length = (uint32_t) strlen(json_buffer);
 	fs_work_t* work = fs_write(trace->fs, trace->write_path, json_buffer, buffer_length, false);
-	fs_work_wait(work); //is this ok?
+	fs_work_wait(work); 
 	fs_work_destroy(work);
 	heap_free(trace->heap, json_buffer);
 }
