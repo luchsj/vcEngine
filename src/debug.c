@@ -11,6 +11,8 @@
 
 #define HASH_SIZE 20
 #define STACK_TRACE_SIZE 10
+#define STACK_COUNT_MAX 128 //this is extremely inefficient memory-wise. we need to use realloc, but that makes TLSF confused.
+//also how do i view memory leaks inside of VS? can i use valgrind?
 static uint32_t s_mask = 0xffffffff;
 
 typedef struct trace_alloc_t
@@ -21,7 +23,7 @@ typedef struct trace_alloc_t
 	void** trace_stack;
 } trace_alloc_t;
 
-trace_alloc_t** stack_record;
+trace_alloc_t*** stack_record;
 uint64_t stack_count[HASH_SIZE];
 uint64_t stack_count_max[HASH_SIZE];
 
@@ -33,7 +35,7 @@ uint64_t addr_hash(void* addr)
 static LONG debug_exception_handler(LPEXCEPTION_POINTERS ExceptionInfo)
 {
 	debug_print(k_print_error, "caught exception!\n");
-	HANDLE file = CreateFile(L"ga2022-crash.dump", GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE file = CreateFile(L"ga2022-crash.dmp", GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (file != INVALID_HANDLE_VALUE)
 	{
 		MINIDUMP_EXCEPTION_INFORMATION mini_exception = {0};
@@ -91,12 +93,20 @@ void debug_system_init()
 	if(SymInitialize(GetCurrentProcess(), NULL, TRUE))
 
 	//allocate resources for stack tracing
-	stack_record = calloc(HASH_SIZE, sizeof(void***)); //using regular calloc so we aren't manipulating tlsf`
+	stack_record = calloc(HASH_SIZE, sizeof(trace_alloc_t**)); //using regular calloc so we aren't manipulating tlsf`
+
+	if (stack_record == NULL)
+	{
+		debug_print(k_print_warning, "failed to initialize debug system!\n");
+		return;
+	}
+
 	for (int k = 0; k < HASH_SIZE; k++)
 	{
 		stack_count[k] = 0;
-		stack_count_max[k] = 16;
-		stack_record[k] = malloc(sizeof(trace_alloc_t) * stack_count_max[k]);
+		stack_count_max[k] = STACK_COUNT_MAX;
+		if(stack_record)
+			stack_record[k] = malloc(sizeof(trace_alloc_t*) * stack_count_max[k]);
 	}
 
 	debug_print(k_print_debug, "debug_system_init() success\n");
@@ -112,7 +122,7 @@ void debug_record_trace(void* address, uint64_t mem_size)
 {
 	//get memory info
 	uint64_t place = addr_hash(address);
-	debug_print(k_print_debug, "recording trace at address %x\n", address);
+	debug_print(k_print_debug, "recording trace at address %x\n", (uintptr_t) address);
 	void* temp_stack[STACK_TRACE_SIZE];
 
 	if (!stack_record)
@@ -121,31 +131,48 @@ void debug_record_trace(void* address, uint64_t mem_size)
 		return;
 	}
 
-	stack_record[place][stack_count[place]].address = (uintptr_t) address;
-	stack_record[place][stack_count[place]].mem_size = mem_size;
-	stack_record[place][stack_count[place]].trace_size = debug_backtrace(temp_stack, STACK_TRACE_SIZE, 2);
-	stack_record[place][stack_count[place]].trace_stack = malloc(sizeof(void*) * stack_record[place][stack_count[place]].trace_size);
-
-
-	for (int k = 0; k < stack_record[place][stack_count[place]].trace_size; k++)
+	if(stack_count[place] >= stack_count_max[place] - 1)
 	{
-		stack_record[place][stack_count[place]].trace_stack[k] = temp_stack[k];
+		debug_print(k_print_debug, "record_trace aborted, over stack trace limit\n");
+		return;
 	}
 
-	stack_count[place]++;
+	if(stack_record[place][stack_count[place]])
+		stack_record[place][stack_count[place]] = calloc(1, sizeof(trace_alloc_t));
+	if(stack_record[place][stack_count[place]] != NULL)
+	{
+		stack_record[place][stack_count[place]]->address = (uintptr_t) address;
+		stack_record[place][stack_count[place]]->mem_size = mem_size;
+		stack_record[place][stack_count[place]]->trace_size = debug_backtrace(temp_stack, STACK_TRACE_SIZE, 2);
+		stack_record[place][stack_count[place]]->trace_stack = malloc(sizeof(void*) * stack_record[place][stack_count[place]]->trace_size);
+
+		for (int k = 0; k < stack_record[place][stack_count[place]]->trace_size; k++)
+		{
+			stack_record[place][stack_count[place]]->trace_stack[k] = temp_stack[k];
+		}
+
+		stack_count[place]++;
+	}
+	else
+	{
+		debug_print(k_print_debug, "failed to initialize trace!\n");
+	}
 }
 
 void debug_remove_trace(void* address)
 {
+	debug_print(k_print_debug, "removing trace at address %x\n", (uintptr_t)address);
 	uint64_t place = addr_hash(address);
 	for (int k = 0; k < stack_count[place]; k++)
 	{
-		if (stack_record[place][k].address == (uintptr_t)address)
+		if (stack_record[place][k]->address == (uintptr_t)address)
 		{
-			for(int c = 0; c < stack_record[place][k].trace_size; c++)
-				free(stack_record[place][k].trace_stack[c]);
-			free(stack_record[place][k].trace_stack);
-			stack_record[place][stack_count[place]].address = 0;
+			//for(int c = 0; c < stack_record[place][k]->trace_size; c++)
+				//free(stack_record[place][k]->trace_stack[c]);
+			free(stack_record[place][k]->trace_stack);
+			stack_record[place][k]->address = 0;
+
+			stack_count[place]--;
 			return;
 		}
 	}
@@ -160,11 +187,11 @@ void debug_print_trace(void* address)
 	uint64_t mem_size = 0;
 	for (int k = 0; k < stack_count[place]; k++)
 	{
-		if (stack_record[place][k].address == (uintptr_t) address)
+		if (stack_record[place][k]->address == (uintptr_t) address)
 		{
-			trace = stack_record[place][k].trace_stack;
-			trace_size = stack_record[place][k].trace_size;
-			mem_size = stack_record[place][k].mem_size;
+			trace = stack_record[place][k]->trace_stack;
+			trace_size = stack_record[place][k]->trace_size;
+			mem_size = stack_record[place][k]->mem_size;
 			break;
 		}
 	}

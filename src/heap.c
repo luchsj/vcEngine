@@ -86,6 +86,8 @@ void* heap_realloc(heap_t* heap, void* prev, size_t size, size_t alignment)
 void heap_free(heap_t* heap, void* address)
 {
 	mutex_lock(heap->mutex);
+	//also remove trace here!
+	debug_remove_trace(address);
 	tlsf_free(heap->tlsf, address);
 	mutex_unlock(heap->mutex);
 }
