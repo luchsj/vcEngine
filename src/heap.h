@@ -16,6 +16,11 @@ heap_t* heap_create(size_t grow_increment);
 //allocate memory from a heap
 void* heap_alloc(heap_t* heap, size_t size, size_t alignment);
 
+//change the size of previously allocated memory
+//not done in place, so it requires size memory besides what's already allocated to be available
+//data beyond old size will be uninitialized
+void* heap_realloc(heap_t* heap, void* prev, size_t size, size_t alignment);
+
 //free memory previously allocated from a heap
 void heap_free(heap_t* heap, void* address);
 

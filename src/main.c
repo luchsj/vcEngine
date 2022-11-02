@@ -29,6 +29,7 @@ static void homework3_test();
 
 int main(int argc, const char* argv[])
 {
+	timer_startup();
 	//debug_install_exception_handler();
 	debug_set_print_mask(k_print_info | k_print_warning | k_print_error);
 	debug_system_init();
@@ -42,6 +43,7 @@ int main(int argc, const char* argv[])
 	timer_object_t* root_time = timer_object_create(heap, NULL);
 
 	// THIS IS THE MAIN LOOP!
+	/*
 	while (!wm_pump(window))
 	{
 		timer_object_update(root_time);
@@ -65,11 +67,12 @@ int main(int argc, const char* argv[])
 	heap_destroy(heap);
 
 	debug_system_uninit();
+}
 
 static void homework3_slower_function(trace_t* trace)
 {
 	trace_duration_push(trace, "homework3_slower_function");
-	thread_sleep(200);
+	thread_sleep(2000);
 	trace_duration_pop(trace);
 }
 
@@ -91,13 +94,14 @@ static int homework3_test_func(void* data)
 static void homework3_test()
 {
 	heap_t* heap = heap_create(4096);
+	fs_t* fs = fs_create(heap, 1);
 
 	// Create the tracing system with at least space for 100 *captured* events.
 	// Each call to trace_duration_push is an event.
 	// Each call to trace_duration_pop is an event.
 	// Before trace_capture_start is called, and after trace_capture_stop is called,
 	// duration events should not be generated.
-	trace_t* trace = trace_create(heap, 100);
+	trace_t* trace = trace_create(heap, fs, 100);
 
 	// Capturing has *not* started so these calls can safely be ignored.
 	trace_duration_push(trace, "should be ignored");
@@ -126,5 +130,6 @@ static void homework3_test()
 
 	trace_destroy(trace);
 
+	fs_destroy(fs);
 	heap_destroy(heap);
 }

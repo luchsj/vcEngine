@@ -1,12 +1,12 @@
 #pragma once
 
 typedef struct heap_t heap_t;
-
+typedef struct fs_t fs_t;
 typedef struct trace_t trace_t;
 
 // Creates a CPU performance tracing system.
 // Event capacity is the maximum number of durations that can be traced.
-trace_t* trace_create(heap_t* heap, int event_capacity);
+trace_t* trace_create(heap_t* heap, fs_t* fs, int event_capacity);
 
 // Destroys a CPU performance tracing system.
 void trace_destroy(trace_t* trace);
