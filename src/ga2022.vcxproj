@@ -148,6 +148,11 @@
     <ClCompile Include="event.c" />
     <ClCompile Include="fs.c" />
     <ClCompile Include="heap.c" />
+    <ClCompile Include="l4z\lz4.c" />
+    <ClCompile Include="l4z\lz4file.c" />
+    <ClCompile Include="l4z\lz4frame.c" />
+    <ClCompile Include="l4z\lz4hc.c" />
+    <ClCompile Include="l4z\xxhash.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="mat4f.c" />
     <ClCompile Include="mutex.c" />
@@ -169,6 +174,12 @@
     <ClInclude Include="fs.h" />
     <ClInclude Include="heap.h" />
     <ClInclude Include="debug.h" />
+    <ClInclude Include="l4z\lz4.h" />
+    <ClInclude Include="l4z\lz4file.h" />
+    <ClInclude Include="l4z\lz4frame.h" />
+    <ClInclude Include="l4z\lz4frame_static.h" />
+    <ClInclude Include="l4z\lz4hc.h" />
+    <ClInclude Include="l4z\xxhash.h" />
     <ClInclude Include="mutex.h" />
     <ClInclude Include="quatf.h" />
     <ClInclude Include="queue.h" />
