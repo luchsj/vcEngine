@@ -58,5 +58,5 @@ src/.vs/ga2022/v17/Browse.VC.db-wal
 src/.vs/ga2022/v17/Browse.VC.db-shm
 src/.vs/ga2022/v17/ipch/AutoPCH/
 src/.vs/ga2022/FileContentIndex
-
-src/x64/Debug/
+/src/x64/Debug
+src/.vs/ga2022/v17/ipch/AutoPCH/e0fc84cb0330703e/MAIN.ipch
