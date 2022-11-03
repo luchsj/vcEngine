@@ -16,13 +16,13 @@
 
 int main(int argc, const char* argv[])
 {
-	debug_set_print_mask(k_print_info | k_print_warning | k_print_error | k_print_debug);
+	debug_set_print_mask(k_print_info | k_print_warning | k_print_error);
 	//debug_install_exception_handler();
 
 	timer_startup();
-	debug_system_init();
+	debug_system_t* debug_sys = debug_system_init(128);
 
-	heap_t* heap = heap_create(2 * 1024 * 1024);
+	heap_t* heap = heap_create(2 * 1024 * 1024, debug_sys);
 	fs_t* fs = fs_create(heap, 8);
 	wm_window_t* window = wm_create(heap);
 	render_t* render = render_create(heap, window);
@@ -43,5 +43,5 @@ int main(int argc, const char* argv[])
 	fs_destroy(fs);
 	heap_destroy(heap);
 
-	debug_system_uninit();
+	debug_system_uninit(debug_sys);
 }
