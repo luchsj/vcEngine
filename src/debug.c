@@ -16,7 +16,6 @@
 //TLSF has realloc, but would using it in this system mess things up? would it be ok to create a debug-exclusive heap that won't track its own leaks?
 //also how do i view memory leaks inside of VS? can i use valgrind?
 //what parts of debug systems end up in shipped code? what would we change for a release version?
-//what are the system calls to use thread-specific stacks?
 static uint32_t s_mask = 0xffffffff;
 
 typedef struct trace_alloc_t
