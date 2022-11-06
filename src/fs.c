@@ -289,9 +289,9 @@ static int compression_thread_func(void* user)
 		{
 			case k_fs_work_op_write:
 			{
-				int buffer_size = LZ4_compressBound(work->size);
+				uint32_t buffer_size = LZ4_compressBound(work->size);
 				void* compression_buffer = heap_alloc(work->heap, buffer_size, 8);
-				int compressed_size = LZ4_compress_default(work->buffer, compression_buffer, work->size, buffer_size);
+				uint32_t compressed_size = LZ4_compress_default(work->buffer, compression_buffer, work->size, buffer_size);
 				if (compressed_size == 0)
 				{
 					debug_print(k_print_error, "Failed to compress file; LZ4 returned 0");
@@ -307,7 +307,7 @@ static int compression_thread_func(void* user)
 			case k_fs_work_op_read:
 			{
 				void* compression_buffer = heap_alloc(work->heap, work->compression_size + 1, 8); // + 1 to accomodate null terminator
-				int bytes_decompressed = LZ4_decompress_safe(work->buffer, compression_buffer, work->size, work->compression_size);
+				uint32_t bytes_decompressed = LZ4_decompress_safe(work->buffer, compression_buffer, work->size, work->compression_size);
 				((char*) compression_buffer)[bytes_decompressed] = 0;
 				if (bytes_decompressed <= 0)
 				{
