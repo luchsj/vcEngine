@@ -10,6 +10,8 @@
 #include <Windows.h>
 #include <Windowsx.h>
 
+#define TRACE_SIZE 8
+
 typedef struct arena_t
 {
 	pool_t pool;
@@ -49,7 +51,8 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 	void* address = tlsf_memalign(heap->tlsf, alignment, size);
 	if (!address)
 	{
-		//at least grow_increment memory
+		size_t old_size = size;
+		size += 8 * TRACE_SIZE;
 		size_t arena_size = __max(heap->grow_increment, size * 2) + sizeof(arena_t);
 		arena_t* arena = VirtualAlloc(NULL, arena_size + tlsf_pool_overhead(), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 		if (!arena)
@@ -62,10 +65,12 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 		heap->arena = arena;
 
 		address = tlsf_memalign(heap->tlsf, alignment, size);
+		if(heap->debug_sys) //write trace to memory after allocation
+		{ 
+			size_t stack_size = debug_backtrace((intptr_t) address + old_size, TRACE_SIZE, 2);
+		}
 	}
 	debug_print(k_print_debug, "memory allocated at address %p\n", address);
-	if(heap->debug_sys)
-		debug_record_trace(heap->debug_sys, address, size);
 	mutex_unlock(heap->mutex);
 
 	return address;
@@ -74,11 +79,11 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 void* heap_realloc(heap_t* heap, void* prev, size_t size, size_t alignment)
 {
 	mutex_lock(heap->mutex);
-	if(heap->debug_sys)
-		debug_remove_trace(heap->debug_sys, prev);
+	//if(heap->debug_sys)
+		//debug_remove_trace(heap->debug_sys, prev);
 	void* temp = tlsf_realloc(heap->tlsf, prev, size);
-	if(heap->debug_sys)
-		debug_record_trace(heap->debug_sys, temp, size);
+	//if(heap->debug_sys)
+		//debug_record_trace(heap->debug_sys, temp, size);
 	mutex_unlock(heap->mutex);
 	return temp;
 }
@@ -86,8 +91,8 @@ void* heap_realloc(heap_t* heap, void* prev, size_t size, size_t alignment)
 void heap_free(heap_t* heap, void* address)
 {
 	mutex_lock(heap->mutex);
-	if(heap->debug_sys)
-		debug_remove_trace(heap->debug_sys, address);
+	//if(heap->debug_sys)
+		//debug_remove_trace(heap->debug_sys, address);
 	tlsf_free(heap->tlsf, address);
 	mutex_unlock(heap->mutex);
 }
