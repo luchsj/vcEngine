@@ -52,11 +52,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-src/.vs/ga2022/v17/Browse.VC.opendb
-src/.vs/ga2022/v17/.suo
-src/.vs/ga2022/v17/Browse.VC.db-wal
-src/.vs/ga2022/v17/Browse.VC.db-shm
-src/.vs/ga2022/v17/ipch/AutoPCH/
-src/.vs/ga2022/FileContentIndex
-/src/x64/Debug
-src/.vs/ga2022/v17/ipch/AutoPCH/e0fc84cb0330703e/MAIN.ipch
+src/x64/*
+src/x86/*
+*.vcxproj.filters
+*.vcxproj.user
+src/.vs/*

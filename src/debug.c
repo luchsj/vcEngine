@@ -13,6 +13,7 @@
 #define STACK_TRACE_SIZE 10
 #define STACK_COUNT_MAX 128 //this is extremely inefficient memory-wise. we need to use realloc, but that makes TLSF confused.
 //also how do i view memory leaks inside of VS? can i use valgrind?
+//thread safety - mutexes or that not-hashing thing from a while ago?
 static uint32_t s_mask = 0xffffffff;
 
 typedef struct trace_alloc_t
