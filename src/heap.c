@@ -27,7 +27,7 @@ typedef struct heap_t
 	debug_system_t* debug_sys;
 }heap_t;
 
-heap_t* heap_create(size_t grow_increment, debug_system_t* sys)
+heap_t* heap_create(size_t grow_increment)
 {
 	//call system to allocate memory
 	heap_t* heap = VirtualAlloc(NULL, sizeof(heap_t) + tlsf_size(), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -40,7 +40,7 @@ heap_t* heap_create(size_t grow_increment, debug_system_t* sys)
 	heap->grow_increment = grow_increment;
 	heap->tlsf = tlsf_create(heap+1);
 	heap->arena = NULL;
-	heap->debug_sys = sys; 
+	//heap->debug_sys = sys; 
 
 	return heap;
 }
@@ -48,11 +48,11 @@ heap_t* heap_create(size_t grow_increment, debug_system_t* sys)
 void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 {
 	mutex_lock(heap->mutex);
+	size_t old_size = size;
+	size += debug_get_trace_size(); //allocate additional memory for trace system
 	void* address = tlsf_memalign(heap->tlsf, alignment, size);
 	if (!address)
 	{
-		size_t old_size = size;
-		size += 8 * TRACE_SIZE;
 		size_t arena_size = __max(heap->grow_increment, size * 2) + sizeof(arena_t);
 		arena_t* arena = VirtualAlloc(NULL, arena_size + tlsf_pool_overhead(), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 		if (!arena)
@@ -65,11 +65,11 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 		heap->arena = arena;
 
 		address = tlsf_memalign(heap->tlsf, alignment, size);
-		if(heap->debug_sys) //write trace to memory after allocation
-		{ 
-			size_t stack_size = debug_backtrace((intptr_t) address + old_size, TRACE_SIZE, 2);
-		}
+		//if(heap->debug_sys) //write trace to memory after allocation
+		//{ 
+		//}
 	}
+	debug_record_trace(address, old_size);
 	debug_print(k_print_debug, "memory allocated at address %p\n", address);
 	mutex_unlock(heap->mutex);
 
@@ -102,7 +102,7 @@ void heap_walk(void* ptr, size_t size, int used, void* user)
 	if (used)
 	{
 		debug_print(k_print_debug, "leak detected at address %p!\n", ptr);
-		debug_print_trace((debug_system_t*) user, ptr); //how to get result back into heap_destroy?
+		debug_print_trace(ptr, used);
 	}
 }
 
@@ -114,7 +114,7 @@ void heap_destroy(heap_t* heap)
 	while (arena)
 	{
 		arena_t* next = arena->next;
-		tlsf_walk_pool(arena->pool, heap_walk, (void*) heap->debug_sys);
+		tlsf_walk_pool(arena->pool, heap_walk, NULL);
 		
 		VirtualFree(arena, 0, MEM_RELEASE);
 		arena = next;
