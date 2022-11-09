@@ -145,7 +145,7 @@ static void load_resources(frogger_game_t* game)
 
 	static vec3f_t cube_verts[] =
 	{
-		{ -1.0f, -1.0f,  1.0f }, { 0.0f, 1.0f,  1.0f },
+		{ -1.0f, -1.0f,  1.0f }, { 0.0f, 1.0f,  1.0f }, //{pos}, {color}
 		{  1.0f, -1.0f,  1.0f }, { 1.0f, 0.0f,  1.0f },
 		{  1.0f,  1.0f,  1.0f }, { 1.0f, 1.0f,  0.0f },
 		{ -1.0f,  1.0f,  1.0f }, { 1.0f, 0.0f,  0.0f },
@@ -298,7 +298,18 @@ static void update_players(frogger_game_t* game)
 
 static void update_cars(frogger_game_t* game)
 {
+	float dt = (float) timer_object_get_delta_ms(game->timer) * .001f;
+	uint64_t k_query_mask = (1ULL << game->transform_type) | (1ULL << game->player_type);
 
+	for (ecs_query_t query = ecs_query_create(game->ecs, k_query_mask); ecs_query_is_valid(game->ecs, &query); ecs_query_next(game->ecs, &query))
+	{
+		transform_component_t* transform_comp = ecs_query_get_component(game->ecs, &query, game->transform_type);
+		car_component_t* car_comp = ecs_query_get_component(game->ecs, &query, game->transform_type);
+
+		transform_t move;
+		transform_identity(&move);
+		move.translation = vec3f_add(move.translation, vec3f_scale(vec3f_right(), -dt * car_comp->speed));
+	}
 }
 
 static void draw_models(frogger_game_t* game)
