@@ -203,6 +203,7 @@ void debug_remove_trace(debug_system_t* sys, void* address)
 	}
 }
 
+//todo: buffer trace output
 void debug_print_trace(debug_system_t* sys, void* address)
 {
 	//find address in trace record
