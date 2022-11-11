@@ -21,9 +21,9 @@ int main(int argc, const char* argv[])
 	//debug_install_exception_handler();
 
 	timer_startup();
-	debug_system_t* debug_sys = debug_system_init(128);
+	//debug_system_t* debug_sys = debug_system_init(128);
 
-	heap_t* heap = heap_create(2 * 1024 * 1024, debug_sys);
+	heap_t* heap = heap_create(2 * 1024 * 1024, NULL);
 	fs_t* fs = fs_create(heap, 8);
 	wm_window_t* window = wm_create(heap);
 	render_t* render = render_create(heap, window);
@@ -44,5 +44,5 @@ int main(int argc, const char* argv[])
 	fs_destroy(fs);
 	heap_destroy(heap);
 
-	debug_system_uninit(debug_sys);
+	//debug_system_uninit(debug_sys);
 }

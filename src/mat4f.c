@@ -219,6 +219,31 @@ void mat4f_make_perspective(mat4f_t* m, float angle, float aspect, float z_near,
 	m->data[3][3] = 0.0f;
 }
 
+void mat4f_make_orthographic(mat4f_t* m, float x_left, float x_right, float y_top, float y_bottom, float z_near, float z_far)
+{
+	//am i getting the matrix indices right?
+	m->data[0][0] = 2.0f / (x_right - x_left);
+	m->data[0][1] = 0.0f;
+	m->data[0][2] = 0.0f;
+	m->data[0][3] = 0.0f; //-(x_right + x_left) / (x_right - x_left);
+
+	m->data[1][0] = 0.0f;
+	m->data[1][1] = 2.0f / (y_top - y_bottom);
+	m->data[1][2] = 0.0f;
+	m->data[1][3] = 0.0f; //-(y_top + y_bottom) / (y_top - y_bottom);
+
+	m->data[2][0] = 0.0f;
+	m->data[2][1] = 0.0f;
+	m->data[2][2] = -2.0f / (z_far - z_near);
+	m->data[2][3] = 0.0f; //-(z_far + z_near) / (z_far - z_near);
+
+
+	m->data[3][0] = -(x_right + x_left) / (x_right - x_left);
+	m->data[3][1] = -(y_top + y_bottom) / (y_top - y_bottom);
+	m->data[3][2] = -(z_far + z_near) / (z_far - z_near);
+	m->data[3][3] = 1.0f;
+}
+
 void mat4f_make_lookat(mat4f_t* m, const vec3f_t* eye, const vec3f_t* dir, const vec3f_t* up)
 {
 	vec3f_t z_vec = vec3f_negate(vec3f_norm(*dir));

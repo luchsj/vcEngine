@@ -1,5 +1,6 @@
 #include "ecs.h"
 #include "fs.h"
+#include "debug.h"
 #include "gpu.h"
 #include "heap.h"
 #include "frogger_game.h"
@@ -29,21 +30,26 @@ typedef struct model_component_t
 	gpu_shader_info_t* shader_info;
 } model_component_t;
 
+typedef struct material_component_t
+{
+	vec3f_t rgb;
+}material_component_t;
+
 typedef struct player_component_t
 {
 	int index;
 	int speed;
+	int hitbox_h;
+	int hitbox_w;
 } player_component_t;
 
 typedef struct car_component_t
 {
 	int index;
 	int speed;
-	int hitbox_y;
-	int hitbox_x;
-	int bound_x;
-
-	player_component_t* player;
+	int hitbox_h;
+	int hitbox_w;
+	int bound_w; //width of lane across the screen
 } car_component_t;
 
 typedef struct name_component_t
@@ -64,6 +70,7 @@ typedef struct frogger_game_t
 	int transform_type;
 	int camera_type;
 	int model_type;
+	int material_type;
 	int player_type;
 	int car_type;
 	int name_type;
@@ -101,12 +108,15 @@ frogger_game_t* frogger_game_create(heap_t* heap, fs_t* fs, wm_window_t* window,
 	game->transform_type = ecs_register_component_type(game->ecs, "transform", sizeof(transform_component_t), _Alignof(transform_component_t));
 	game->camera_type = ecs_register_component_type(game->ecs, "camera", sizeof(camera_component_t), _Alignof(camera_component_t));
 	game->model_type = ecs_register_component_type(game->ecs, "model", sizeof(model_component_t), _Alignof(model_component_t));
+	game->material_type = ecs_register_component_type(game->ecs, "material" , sizeof(material_component_t), _Alignof(material_component_t));
 	game->player_type = ecs_register_component_type(game->ecs, "player", sizeof(player_component_t), _Alignof(player_component_t));
+	game->car_type = ecs_register_component_type(game->ecs, "car", sizeof(car_component_t), _Alignof(car_component_t));
 	game->name_type = ecs_register_component_type(game->ecs, "name", sizeof(name_component_t), _Alignof(name_component_t));
 
 	load_resources(game);
-	spawn_player(game, 0, 1);
+	spawn_player(game, 0, 2);
 	//spawn_player(game, 1);
+	spawn_car(game, 0, 2);
 	spawn_camera(game);
 
 	return game;
@@ -125,7 +135,7 @@ void frogger_game_update(frogger_game_t* game)
 	timer_object_update(game->timer);
 	ecs_update(game->ecs);
 	update_players(game);
-	//update_cars(game);
+	update_cars(game);
 	draw_models(game);
 	render_push_done(game->render);
 }
@@ -191,12 +201,16 @@ static void spawn_player(frogger_game_t* game, int index, int speed)
 		(1ULL << game->transform_type) |
 		(1ULL << game->model_type) |
 		(1ULL << game->player_type) |
+		(1ULL << game->material_type) |
 		(1ULL << game->name_type);
 	game->player_ent = ecs_entity_add(game->ecs, k_player_ent_mask);
 
 	transform_component_t* transform_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->transform_type, true);
 	transform_identity(&transform_comp->transform);
-	transform_comp->transform.translation.y = (float)index * 2.0f;
+	transform_comp->transform.translation.z = 3.0f;
+	transform_comp->transform.scale.x = 0.5f;
+	transform_comp->transform.scale.y = 0.5f;
+	transform_comp->transform.scale.z = 0.5f;
 
 	name_component_t* name_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->name_type, true);
 	strcpy_s(name_comp->name, sizeof(name_comp->name), "player");
@@ -204,32 +218,48 @@ static void spawn_player(frogger_game_t* game, int index, int speed)
 	player_component_t* player_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->player_type, true);
 	player_comp->index = index;
 	player_comp->speed = speed;
+	player_comp->hitbox_h = .25f;
+	player_comp->hitbox_w = .25f;
 
 	model_component_t* model_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->model_type, true);
 	model_comp->mesh_info = &game->cube_mesh;
 	model_comp->shader_info = &game->cube_shader;
+
+	material_component_t* material_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->material_type, true);
+	material_comp->rgb.x = 0; material_comp->rgb.y = 1; material_comp->rgb.z = 0; 
 }
 
 static void spawn_car(frogger_game_t* game, int index, int speed)
 {
-	uint64_t k_car_ent_mask = (1ULL << game->camera_type) | (1ULL << game->name_type) | (1ULL << game->model_type) | (1ULL << game->car_type);
+	uint64_t k_car_ent_mask = 
+		(1ULL << game->transform_type) | 
+		(1ULL << game->name_type) | 
+		(1ULL << game->model_type) | 
+		(1ULL << game->material_type) | 
+		(1ULL << game->car_type);
 	game->car_ent = ecs_entity_add(game->ecs, k_car_ent_mask);
 
-	transform_component_t* transform_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->transform_type, true);
+	transform_component_t* transform_comp = ecs_entity_get_component(game->ecs, game->car_ent, game->transform_type, true);
 	transform_identity(&transform_comp->transform);
 	transform_comp->transform.translation.y = 0.0f;
 	transform_comp->transform.scale.x = 2.0f;
 
-	name_component_t* name_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->name_type, true);
+	name_component_t* name_comp = ecs_entity_get_component(game->ecs, game->car_ent, game->name_type, true);
 	strcpy_s(name_comp->name, sizeof(name_comp->name), "car");
 
 	car_component_t* car_comp = ecs_entity_get_component(game->ecs, game->car_ent, game->car_type, true);
 	car_comp->index = index;
 	car_comp->speed = speed;
+	car_comp->bound_w = 3.0f;
+	car_comp->hitbox_h = 2.0f;
+	car_comp->hitbox_w = 1.75f;
 
-	model_component_t* model_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->model_type, true);
+	model_component_t* model_comp = ecs_entity_get_component(game->ecs, game->car_ent, game->model_type, true);
 	model_comp->mesh_info = &game->cube_mesh;
 	model_comp->shader_info = &game->cube_shader;
+
+	material_component_t* material_comp = ecs_entity_get_component(game->ecs, game->car_ent, game->material_type, true);
+	material_comp->rgb.x = 1; material_comp->rgb.y = 0; material_comp->rgb.z = 0; 
 }
 
 static void spawn_camera(frogger_game_t* game)
@@ -243,9 +273,10 @@ static void spawn_camera(frogger_game_t* game)
 	strcpy_s(name_comp->name, sizeof(name_comp->name), "camera");
 
 	camera_component_t* camera_comp = ecs_entity_get_component(game->ecs, game->camera_ent, game->camera_type, true);
-	mat4f_make_perspective(&camera_comp->projection, (float)M_PI / 2.0f, 16.0f / 9.0f, 0.1f, 100.0f);
+	//mat4f_make_perspective(&camera_comp->projection, (float)M_PI / 2.0f, 16.0f / 9.0f, 0.1f, 100.0f);
+	mat4f_make_orthographic(&camera_comp->projection, -8.0f, 8.0f, 4.5f, -4.5f, 0.1f, 10.0f);
 
-	vec3f_t eye_pos = vec3f_scale(vec3f_forward(), -5.0f);
+	vec3f_t eye_pos = vec3f_scale(vec3f_forward(), -10.0f);
 	vec3f_t forward = vec3f_forward();
 	vec3f_t up = vec3f_up();
 	mat4f_make_lookat(&camera_comp->view, &eye_pos, &forward, &up);
@@ -293,22 +324,57 @@ static void update_players(frogger_game_t* game)
 			move.translation = vec3f_add(move.translation, vec3f_scale(vec3f_right(), dt * player_comp->speed));
 		}
 		transform_multiply(&transform_comp->transform, &move);
+
+		//debug_print(k_print_info, "player pos: %f, %f, %f\n", transform_comp->transform.translation.x, 
+			//transform_comp->transform.translation.y, transform_comp->transform.translation.z);
 	}
 }
 
 static void update_cars(frogger_game_t* game)
 {
 	float dt = (float) timer_object_get_delta_ms(game->timer) * .001f;
-	uint64_t k_query_mask = (1ULL << game->transform_type) | (1ULL << game->player_type);
+	uint64_t k_query_mask = (1ULL << game->transform_type) | (1ULL << game->car_type);
 
 	for (ecs_query_t query = ecs_query_create(game->ecs, k_query_mask); ecs_query_is_valid(game->ecs, &query); ecs_query_next(game->ecs, &query))
 	{
 		transform_component_t* transform_comp = ecs_query_get_component(game->ecs, &query, game->transform_type);
-		car_component_t* car_comp = ecs_query_get_component(game->ecs, &query, game->transform_type);
+		car_component_t* car_comp = ecs_query_get_component(game->ecs, &query, game->car_type);
 
 		transform_t move;
 		transform_identity(&move);
 		move.translation = vec3f_add(move.translation, vec3f_scale(vec3f_right(), -dt * car_comp->speed));
+		transform_multiply(&transform_comp->transform, &move);
+
+		if (transform_comp->transform.translation.y < -car_comp->bound_w)
+		{
+			transform_identity(&move);
+			move.translation = vec3f_add(move.translation, vec3f_scale(vec3f_right(), car_comp->bound_w * 2));
+			transform_multiply(&transform_comp->transform, &move);
+		}
+		else if (transform_comp->transform.translation.y > car_comp->bound_w)
+		{
+			transform_identity(&move);
+			move.translation = vec3f_add(move.translation, vec3f_scale(vec3f_right(), -car_comp->bound_w * 2));
+			transform_multiply(&transform_comp->transform, &move);
+		}
+
+		//debug_print(k_print_info, "car pos: %f, %f, %f\n", transform_comp->transform.translation.x, 
+			//transform_comp->transform.translation.y, transform_comp->transform.translation.z);
+
+		//collision check
+		transform_component_t* player_transform = ecs_entity_get_component(game->ecs, game->player_ent, game->transform_type, true);
+		player_component_t* player_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->player_type, true);
+		//todo: make this more precise with fancy trig stuff. that can lead into a proper collision system with pre-defined bounds like unity
+		//if (vec3f_dist(transform_comp->transform.translation, player_transform->transform.translation) < car_comp->hitbox_h)
+		if (fabs(player_transform->transform.translation.z - transform_comp->transform.translation.z) < car_comp->hitbox_h + player_comp->hitbox_h
+			&& fabs(player_transform->transform.translation.y - transform_comp->transform.translation.y) < car_comp->hitbox_w + player_comp->hitbox_w)
+		{
+			debug_print(k_print_info, "y diff: %f\n", fabs(player_transform->transform.translation.y - transform_comp->transform.translation.y));
+			debug_print(k_print_info, "z diff: %f\n", fabs(player_transform->transform.translation.z - transform_comp->transform.translation.z));
+			player_transform->transform.translation = vec3f_zero();
+			player_transform->transform.translation.z = 3.0f;
+		}
+		//debug_print(k_print_info, "%f\n", vec3f_dist(transform_comp->transform.translation, player_transform->transform.translation));
 	}
 }
 
@@ -321,13 +387,14 @@ static void draw_models(frogger_game_t* game)
 	{
 		camera_component_t* camera_comp = ecs_query_get_component(game->ecs, &camera_query, game->camera_type);
 
-		uint64_t k_model_query_mask = (1ULL << game->transform_type) | (1ULL << game->model_type);
+		uint64_t k_model_query_mask = (1ULL << game->transform_type) | (1ULL << game->model_type) | (1ULL << game->material_type);
 		for (ecs_query_t query = ecs_query_create(game->ecs, k_model_query_mask);
 			ecs_query_is_valid(game->ecs, &query);
 			ecs_query_next(game->ecs, &query))
 		{
 			transform_component_t* transform_comp = ecs_query_get_component(game->ecs, &query, game->transform_type);
 			model_component_t* model_comp = ecs_query_get_component(game->ecs, &query, game->model_type);
+			material_component_t* material_comp = ecs_query_get_component(game->ecs, &query, game->material_type);
 			ecs_entity_ref_t entity_ref = ecs_query_get_entity(game->ecs, &query);
 
 			struct
@@ -335,9 +402,11 @@ static void draw_models(frogger_game_t* game)
 				mat4f_t projection;
 				mat4f_t model;
 				mat4f_t view;
+				vec3f_t rgb; //how do we get this into the shader?
 			} uniform_data;
 			uniform_data.projection = camera_comp->projection;
 			uniform_data.view = camera_comp->view;
+			uniform_data.rgb = material_comp->rgb;
 			transform_to_matrix(&transform_comp->transform, &uniform_data.model);
 			gpu_uniform_buffer_info_t uniform_info = { .data = &uniform_data, sizeof(uniform_data) };
 
