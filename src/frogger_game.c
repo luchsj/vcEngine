@@ -39,17 +39,17 @@ typedef struct player_component_t
 {
 	int index;
 	int speed;
-	int hitbox_h;
-	int hitbox_w;
+	float hitbox_h;
+	float hitbox_w;
 } player_component_t;
 
 typedef struct car_component_t
 {
 	int index;
-	int speed;
-	int hitbox_h;
-	int hitbox_w;
-	int bound_w; //width of lane across the screen
+	float speed;
+	float hitbox_h;
+	float hitbox_w;
+	float bound_w; //width of lane across the screen
 } car_component_t;
 
 typedef struct name_component_t
@@ -87,7 +87,7 @@ typedef struct frogger_game_t
 
 static void load_resources(frogger_game_t* game);
 static void unload_resources(frogger_game_t* game);
-static void spawn_car(frogger_game_t* game, int index, int speed);
+static void spawn_car(frogger_game_t* game, int index, int start_x, int start_y, int speed);
 static void spawn_player(frogger_game_t* game, int index, int speed);
 static void spawn_camera(frogger_game_t* game);
 static void update_players(frogger_game_t* game);
@@ -116,7 +116,12 @@ frogger_game_t* frogger_game_create(heap_t* heap, fs_t* fs, wm_window_t* window,
 	load_resources(game);
 	spawn_player(game, 0, 2);
 	//spawn_player(game, 1);
-	spawn_car(game, 0, 2);
+
+	//first row
+	spawn_car(game, 0, 0, 2, 2);
+	spawn_car(game, 1, -5, 2, 2);
+	spawn_car(game, 2, 5, 2, 2);
+
 	spawn_camera(game);
 
 	return game;
@@ -207,10 +212,10 @@ static void spawn_player(frogger_game_t* game, int index, int speed)
 
 	transform_component_t* transform_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->transform_type, true);
 	transform_identity(&transform_comp->transform);
-	transform_comp->transform.translation.z = 3.0f;
-	transform_comp->transform.scale.x = 0.5f;
-	transform_comp->transform.scale.y = 0.5f;
-	transform_comp->transform.scale.z = 0.5f;
+	transform_comp->transform.translation.z = 4.0f;
+	transform_comp->transform.scale.x = 0.25f;
+	transform_comp->transform.scale.y = 0.25f;
+	transform_comp->transform.scale.z = 0.25f;
 
 	name_component_t* name_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->name_type, true);
 	strcpy_s(name_comp->name, sizeof(name_comp->name), "player");
@@ -218,8 +223,8 @@ static void spawn_player(frogger_game_t* game, int index, int speed)
 	player_component_t* player_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->player_type, true);
 	player_comp->index = index;
 	player_comp->speed = speed;
-	player_comp->hitbox_h = .25f;
-	player_comp->hitbox_w = .25f;
+	player_comp->hitbox_h = transform_comp->transform.scale.z;// *0.5f;
+	player_comp->hitbox_w = transform_comp->transform.scale.y;// *0.5f;
 
 	model_component_t* model_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->model_type, true);
 	model_comp->mesh_info = &game->cube_mesh;
@@ -229,7 +234,7 @@ static void spawn_player(frogger_game_t* game, int index, int speed)
 	material_comp->rgb.x = 0; material_comp->rgb.y = 1; material_comp->rgb.z = 0; 
 }
 
-static void spawn_car(frogger_game_t* game, int index, int speed)
+static void spawn_car(frogger_game_t* game, int index, int start_x, int start_y, int speed)
 {
 	uint64_t k_car_ent_mask = 
 		(1ULL << game->transform_type) | 
@@ -241,8 +246,11 @@ static void spawn_car(frogger_game_t* game, int index, int speed)
 
 	transform_component_t* transform_comp = ecs_entity_get_component(game->ecs, game->car_ent, game->transform_type, true);
 	transform_identity(&transform_comp->transform);
-	transform_comp->transform.translation.y = 0.0f;
-	transform_comp->transform.scale.x = 2.0f;
+	//this index thing with y being x and z being y is weird and is something i'd like to address layer
+	transform_comp->transform.translation.y = start_x; 
+	transform_comp->transform.translation.z = start_y;
+	transform_comp->transform.scale.y = .5f;
+	transform_comp->transform.scale.z = .5f;
 
 	name_component_t* name_comp = ecs_entity_get_component(game->ecs, game->car_ent, game->name_type, true);
 	strcpy_s(name_comp->name, sizeof(name_comp->name), "car");
@@ -250,9 +258,9 @@ static void spawn_car(frogger_game_t* game, int index, int speed)
 	car_component_t* car_comp = ecs_entity_get_component(game->ecs, game->car_ent, game->car_type, true);
 	car_comp->index = index;
 	car_comp->speed = speed;
-	car_comp->bound_w = 3.0f;
-	car_comp->hitbox_h = 2.0f;
-	car_comp->hitbox_w = 1.75f;
+	car_comp->bound_w = 10.0f;
+	car_comp->hitbox_h = transform_comp->transform.scale.z;// *0.5f;
+	car_comp->hitbox_w = transform_comp->transform.scale.y;// *0.5f;
 
 	model_component_t* model_comp = ecs_entity_get_component(game->ecs, game->car_ent, game->model_type, true);
 	model_comp->mesh_info = &game->cube_mesh;
@@ -343,34 +351,36 @@ static void update_cars(frogger_game_t* game)
 		transform_t move;
 		transform_identity(&move);
 		move.translation = vec3f_add(move.translation, vec3f_scale(vec3f_right(), -dt * car_comp->speed));
-		transform_multiply(&transform_comp->transform, &move);
 
 		if (transform_comp->transform.translation.y < -car_comp->bound_w)
 		{
-			transform_identity(&move);
 			move.translation = vec3f_add(move.translation, vec3f_scale(vec3f_right(), car_comp->bound_w * 2));
-			transform_multiply(&transform_comp->transform, &move);
 		}
 		else if (transform_comp->transform.translation.y > car_comp->bound_w)
 		{
-			transform_identity(&move);
 			move.translation = vec3f_add(move.translation, vec3f_scale(vec3f_right(), -car_comp->bound_w * 2));
-			transform_multiply(&transform_comp->transform, &move);
 		}
+
+		transform_multiply(&transform_comp->transform, &move);
 
 		//debug_print(k_print_info, "car pos: %f, %f, %f\n", transform_comp->transform.translation.x, 
 			//transform_comp->transform.translation.y, transform_comp->transform.translation.z);
-
+		
+		
 		//collision check
 		transform_component_t* player_transform = ecs_entity_get_component(game->ecs, game->player_ent, game->transform_type, true);
 		player_component_t* player_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->player_type, true);
 		//todo: make this more precise with fancy trig stuff. that can lead into a proper collision system with pre-defined bounds like unity
 		//if (vec3f_dist(transform_comp->transform.translation, player_transform->transform.translation) < car_comp->hitbox_h)
-		if (fabs(player_transform->transform.translation.z - transform_comp->transform.translation.z) < car_comp->hitbox_h + player_comp->hitbox_h
-			&& fabs(player_transform->transform.translation.y - transform_comp->transform.translation.y) < car_comp->hitbox_w + player_comp->hitbox_w)
+		if (!car_comp->index)
 		{
 			debug_print(k_print_info, "y diff: %f\n", fabs(player_transform->transform.translation.y - transform_comp->transform.translation.y));
 			debug_print(k_print_info, "z diff: %f\n", fabs(player_transform->transform.translation.z - transform_comp->transform.translation.z));
+		}
+
+		if (fabs(player_transform->transform.translation.z - transform_comp->transform.translation.z) < car_comp->hitbox_h + player_comp->hitbox_h
+			&& fabs(player_transform->transform.translation.y - transform_comp->transform.translation.y) < car_comp->hitbox_w + player_comp->hitbox_w)
+		{
 			player_transform->transform.translation = vec3f_zero();
 			player_transform->transform.translation.z = 3.0f;
 		}
