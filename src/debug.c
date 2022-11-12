@@ -10,35 +10,20 @@
 #include <windows.h>
 #include <DbgHelp.h>
 
-#define HASH_SIZE 20
-#define STACK_TRACE_SIZE 10
-#define STACK_COUNT_MAX 128 //this is extremely inefficient memory-wise. we need to use realloc, but that makes TLSF confused. 
-//TLSF has realloc, but would using it in this system mess things up? would it be ok to create a debug-exclusive heap that won't track its own leaks?
 //also how do i view memory leaks inside of VS? can i use valgrind?
-//what parts of debug systems end up in shipped code? what would we change for a release version?
+#define STACK_TRACE_SIZE 8
 static uint32_t s_mask = 0xffffffff;
 
 typedef struct trace_alloc_t
 {
-	uintptr_t address;
 	uint64_t mem_size; //are there any memory considerations we need to make here?
-	uint64_t trace_size;
 	void** trace_stack;
 } trace_alloc_t;
 
 typedef struct debug_system_t
 {
-	trace_alloc_t*** stack_record;
-	mutex_t* mutex;
-	uint32_t stack_count[HASH_SIZE];
-	uint32_t stack_count_max[HASH_SIZE];
-	uint32_t trace_count_max;
-} debug_system_t;
-
-uint32_t addr_hash(void* addr)
-{
-	return ((uint64_t) addr) % HASH_SIZE;
-}
+	uint32_t trace_size;
+}debug_system_t;
 
 static LONG debug_exception_handler(LPEXCEPTION_POINTERS ExceptionInfo)
 {
@@ -95,46 +80,21 @@ int debug_backtrace(void** stack, int stack_cap, int offset)
 	return CaptureStackBackTrace(offset, stack_cap, stack, NULL);
 }
 
-debug_system_t* debug_system_init(uint32_t trace_max)
+void debug_system_init(uint32_t trace_max)
 {
 	//initialize symbol system
 	if(!SymInitialize(GetCurrentProcess(), NULL, TRUE))
 		debug_print(k_print_warning, "Failed to initialize symbol system; traces will not return function information\n");
 
-	debug_system_t* new_sys = malloc(sizeof(debug_system_t));
-	if (!new_sys)
-	{
-		debug_print(k_print_warning, "Debug init error: memory allocation failed\n");
-		return NULL;
-	}
-
 	//allocate resources for stack tracing
-	new_sys->stack_record = malloc(HASH_SIZE * sizeof(trace_alloc_t**)); //using regular calloc so we aren't manipulating tlsf
 	//can we use tlsf here?
 	//but then we'd have to trace what's happening in the debug system, right?
 
-	if (new_sys->stack_record == NULL)
-	{
-		debug_print(k_print_warning, "Debug init error: memory allocation failed\n");
-		return NULL;
-	}
-
-	for (int k = 0; k < HASH_SIZE; k++)
-	{
-		new_sys->stack_count[k] = 0;
-		new_sys->stack_count_max[k] = STACK_COUNT_MAX;
-		if(new_sys->stack_record)
-			new_sys->stack_record[k] = malloc(sizeof(trace_alloc_t*) * new_sys->stack_count_max[k]);
-	}
-
-	new_sys->trace_count_max = trace_max;
-	new_sys->mutex = mutex_create();
-
 	debug_print(k_print_debug, "debug_system_init() success\n");
-	return new_sys;
+	//return new_sys;
 }
 
-void debug_system_uninit(debug_system_t* sys)
+void debug_system_uninit()
 {
 	//for(uint32_t i = 0; i < sys->stack_count; i++)
 	//kind of want to implement this using malloc so i can see leaks in VS first
@@ -143,97 +103,46 @@ void debug_system_uninit(debug_system_t* sys)
 	debug_print(k_print_debug, "debug_system_uninit() success\n");
 }
 
-void debug_record_trace(debug_system_t* sys, void* address, uint64_t mem_size)
+int debug_get_trace_size()
 {
-	//get memory info
-	uint64_t place = addr_hash(address);
-	debug_print(k_print_debug, "recording trace at address %x\n", (uintptr_t) address);
+	//just returns size of trace information
+	return sizeof(uint64_t) + sizeof(void*) * STACK_TRACE_SIZE;
+}
+
+void debug_record_trace(void* address, uint64_t mem_size)
+{
+	debug_print(k_print_debug, "recording trace at address %x\n", (intptr_t) address);
+	trace_alloc_t* trace = (trace_alloc_t*)((intptr_t) address + mem_size);
+	trace->mem_size = mem_size;
+	void** trace_stack = (void**)((intptr_t)address + mem_size + sizeof(trace->mem_size));
 	void* temp_stack[STACK_TRACE_SIZE];
+	int stack_size = debug_backtrace(temp_stack, STACK_TRACE_SIZE, 2);
 
-	if (!sys->stack_record)
+	for (int k = 0; k < STACK_TRACE_SIZE; k++)
 	{
-		debug_print(k_print_warning, "record_trace aborted, unititialized stack_record - did you call debug_system_init()?\n");
-		return;
+		if (k < stack_size)
+			trace_stack[k] = temp_stack[k];
+		else
+			trace_stack[k] = 0xffffffff;
 	}
 
-	if(sys->stack_count[place] >= sys->stack_count_max[place] - 1)
-	{
-		debug_print(k_print_warning, "record_trace aborted, over stack trace limit\n");
-		return;
-	}
+	trace->trace_stack = trace_stack;
 
-	if(sys->stack_record[place][sys->stack_count[place]])
-		sys->stack_record[place][sys->stack_count[place]] = calloc(1, sizeof(trace_alloc_t));
-	if(sys->stack_record[place][sys->stack_count[place]] != NULL)
-	{
-		sys->stack_record[place][sys->stack_count[place]]->address = (uintptr_t) address;
-		sys->stack_record[place][sys->stack_count[place]]->mem_size = mem_size;
-		sys->stack_record[place][sys->stack_count[place]]->trace_size = debug_backtrace(temp_stack, STACK_TRACE_SIZE, 2);
-		sys->stack_record[place][sys->stack_count[place]]->trace_stack = malloc(sizeof(void*) * sys->stack_record[place][sys->stack_count[place]]->trace_size);
-
-		for (int k = 0; k < sys->stack_record[place][sys->stack_count[place]]->trace_size; k++)
-		{
-			sys->stack_record[place][sys->stack_count[place]]->trace_stack[k] = temp_stack[k];
-		}
-
-		sys->stack_count[place]++;
-	}
-	else
-	{
-		debug_print(k_print_debug, "failed to initialize trace!\n");
-	}
+	//debug_print(k_print_debug, "failed to initialize trace!\n");
 }
 
-void debug_remove_trace(debug_system_t* sys, void* address)
+void debug_print_trace(void* address, size_t mem_size)
 {
-	debug_print(k_print_debug, "removing trace at address %x\n", (uintptr_t)address);
-	uint64_t place = addr_hash(address);
-	for (uint32_t k = 0; k < sys->stack_count[place]; k++)
-	{
-		if (sys->stack_record[place][k]->address == (uintptr_t)address)
-		{
-			//for(int c = 0; c < stack_record[place][k]->trace_size; c++)
-				//free(stack_record[place][k]->trace_stack[c]);
-			free(sys->stack_record[place][k]->trace_stack);
-			sys->stack_record[place][k]->address = 0;
-
-			sys->stack_count[place]--;
-			return;
-		}
-	}
-}
-
-//todo: buffer trace output
-void debug_print_trace(debug_system_t* sys, void* address)
-{
-	//find address in trace record
-	uint32_t place = addr_hash(address);
-	void** trace = NULL;
-	uint64_t trace_size = 0;
-	uint64_t mem_size = 0;
-	for (uint32_t k = 0; k < sys->stack_count[place]; k++)
-	{
-		if (sys->stack_record[place][k]->address == (uintptr_t) address)
-		{
-			trace = sys->stack_record[place][k]->trace_stack;
-			trace_size = sys->stack_record[place][k]->trace_size;
-			mem_size = sys->stack_record[place][k]->mem_size;
-			break;
-		}
-	}
-	if (!trace)
-	{
-		debug_print(k_print_warning, "debug_print_trace failed to find given address in stack record\n");
-		return;
-	}
-
 	//if trace found, print call stack
-	debug_print(k_print_warning, "Memory leak of size %u bytes with call stack:\n", mem_size);
-	for(int k = 0; k < trace_size; k++)
+	trace_alloc_t* trace = (trace_alloc_t*)((intptr_t) address + mem_size - debug_get_trace_size());
+	debug_print(k_print_warning, "Memory leak of size %u bytes with call stack:\n", trace->mem_size);
+	for(uint32_t k = 1; k < STACK_TRACE_SIZE; k++)
 	{ 
+		if (trace->trace_stack[k] == 0xffffffff)
+			break;
 		//get info from symbols
 		char buffer[sizeof(IMAGEHLP_SYMBOL64) + MAX_SYM_NAME * sizeof(TCHAR)];
-		DWORD64 trace_addr = (DWORD64) trace[k];
+		DWORD64 trace_addr = (DWORD64) trace->trace_stack[k];
 		DWORD64 displacement;
 		IMAGEHLP_SYMBOL64 *sym = (IMAGEHLP_SYMBOL64*) buffer;
 		IMAGEHLP_LINE64 line;
