@@ -155,6 +155,8 @@
     <ClCompile Include="debug.c" />
     <ClCompile Include="ecs.c" />
     <ClCompile Include="event.c" />
+    <ClCompile Include="frogger_game.c" />
+    <ClCompile Include="frogger_game.h" />
     <ClCompile Include="fs.c" />
     <ClCompile Include="gpu.c" />
     <ClCompile Include="heap.c" />
