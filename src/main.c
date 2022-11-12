@@ -44,5 +44,5 @@ int main(int argc, const char* argv[])
 	fs_destroy(fs);
 	heap_destroy(heap);
 
-	//debug_system_uninit(debug_sys);
+	debug_system_uninit();
 }
