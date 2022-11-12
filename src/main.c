@@ -21,7 +21,7 @@ int main(int argc, const char* argv[])
 	//debug_install_exception_handler();
 
 	timer_startup();
-	//debug_system_t* debug_sys = debug_system_init(128);
+	debug_system_init(8);
 
 	heap_t* heap = heap_create(2 * 1024 * 1024, NULL);
 	fs_t* fs = fs_create(heap, 8);
