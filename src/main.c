@@ -2,7 +2,7 @@
 #include "fs.h"
 #include "heap.h"
 #include "render.h"
-#include "frogger_game.h"
+//#include "frogger_game.h"
 #include "timer.h"
 #include "wm.h"
 #include "heap.h"
@@ -10,7 +10,7 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include <string.h> //VS doesn't tell me when a function is undefined?
+#include <string.h>
 
 #include <windows.h>
 

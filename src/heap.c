@@ -1,5 +1,4 @@
 #include "heap.h"
-
 #include "debug.h"
 #include "heap.h"
 #include "tlsf/tlsf.h"
@@ -70,7 +69,7 @@ void* heap_alloc(heap_t* heap, size_t size, size_t alignment)
 		//}
 	}
 	debug_record_trace(address, old_size);
-	debug_print(k_print_debug, "memory allocated at address %p\n", address);
+	debug_print(k_print_debug, "memory allocated at address %p with size %d\n", address, old_size);
 	mutex_unlock(heap->mutex);
 
 	return address;
@@ -102,7 +101,7 @@ void heap_walk(void* ptr, size_t size, int used, void* user)
 	if (used)
 	{
 		debug_print(k_print_debug, "leak detected at address %p!\n", ptr);
-		debug_print_trace(ptr, used);
+		debug_print_trace(ptr, size);
 	}
 }
 
