@@ -97,7 +97,8 @@ void heap_walk(void* ptr, size_t size, int used, void* user)
 	if (used)
 	{
 		debug_print(k_print_debug, "leak detected at address %p!\n", ptr);
-		debug_print_trace((debug_system_t*) user, ptr); //how to get result back into heap_destroy?
+		if(user)
+			debug_print_trace((debug_system_t*) user, ptr); //how to get result back into heap_destroy?
 	}
 }
 

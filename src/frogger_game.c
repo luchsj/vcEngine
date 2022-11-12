@@ -369,9 +369,6 @@ static void update_cars(frogger_game_t* game)
 		}
 
 		transform_multiply(&transform_comp->transform, &move);
-
-		//debug_print(k_print_info, "car pos: %f, %f, %f\n", transform_comp->transform.translation.x, 
-			//transform_comp->transform.translation.y, transform_comp->transform.translation.z);
 		
 		//collision check
 		transform_component_t* player_transform = ecs_entity_get_component(game->ecs, game->player_ent, game->transform_type, true);
@@ -382,13 +379,6 @@ static void update_cars(frogger_game_t* game)
 		{
 			player_transform->transform = player_comp->respawn_pos;
 		}
-		//todo: make this more precise with fancy trig stuff. that can lead into a proper collision system with pre-defined bounds like unity
-		//if (vec3f_dist(transform_comp->transform.translation, player_transform->transform.translation) < car_comp->hitbox_h)
-		/*if (!car_comp->index)
-		{
-			debug_print(k_print_info, "y diff: %f\n", fabs(player_transform->transform.translation.y - transform_comp->transform.translation.y));
-			debug_print(k_print_info, "z diff: %f\n", fabs(player_transform->transform.translation.z - transform_comp->transform.translation.z));
-		}*/
 	}
 }
 
@@ -416,7 +406,7 @@ static void draw_models(frogger_game_t* game)
 				mat4f_t projection;
 				mat4f_t model;
 				mat4f_t view;
-				vec3f_t rgb; //how do we get this into the shader?
+				vec3f_t rgb; 
 			} uniform_data;
 			uniform_data.projection = camera_comp->projection;
 			uniform_data.view = camera_comp->view;
