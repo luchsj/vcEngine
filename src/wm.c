@@ -2,8 +2,6 @@
 #include "wm.h"
 #include "heap.h"
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -42,37 +40,32 @@ static LRESULT CALLBACK _window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 {
 	wm_window_t* win = (wm_window_t*) GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
-	switch (uMsg)
+	if (win)
 	{
-		if(win)
-		{ 
-			case WM_KEYDOWN: //this method of key detection won't register two opposing arrow keys being pressed down at the same time. however, there is another call to get that data: GetKeyState() (which would be in wm_pump)
-			for (int i = 0; i < _countof(k_key_map); ++i)
-			{
-				if(k_key_map[i].virtual_key == wParam)
-				{ 
-					win->key_mask |= k_key_map[i].ga_key;
-					break;
-				}
-				break;
-			}
-			break;
-			case WM_KEYUP:
-			for (int i = 0; i < _countof(k_key_map); ++i)
-			{
-				if(k_key_map[i].virtual_key == wParam)
-				{ 
-					win->key_mask |= k_key_map[i].ga_key;
-					break;
-				}
-				break;
-				if (k_key_map[i].virtual_key == wParam)
+		switch (uMsg)
+		{
+			//this method of key detection won't register two opposing arrow keys being pressed down at the same time. 
+			//however, there is another system call to get that data: GetKeyState() (which would be in wm_pump)
+			case WM_KEYDOWN: 
+				for (int i = 0; i < _countof(k_key_map); ++i)
 				{
-					win->key_mask &= ~k_key_map[i].ga_key;
-					break;
+					if(k_key_map[i].virtual_key == wParam)
+					{ 
+						win->key_mask |= k_key_map[i].ga_key;
+						break;
+					}
 				}
-			}
-			break;
+				break;
+			case WM_KEYUP:
+				for (int i = 0; i < _countof(k_key_map); ++i)
+				{
+					if (k_key_map[i].virtual_key == wParam)
+					{
+						win->key_mask &= ~k_key_map[i].ga_key;
+						break;
+					}
+				}
+				break;
 		case WM_LBUTTONDOWN:
 			win->mouse_mask |= k_mouse_button_left;
 			printf("press\n");
@@ -81,7 +74,6 @@ static LRESULT CALLBACK _window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 			win->mouse_mask &= ~k_mouse_button_left;
 			// ^= bitwise XOR
 			printf("release\n");
-			break;
 			break;
 		case WM_RBUTTONDOWN:
 			win->mouse_mask |= k_mouse_button_right;
@@ -96,6 +88,7 @@ static LRESULT CALLBACK _window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 			win->mouse_mask &= ~k_mouse_button_middle;
 			break;
 		case WM_MOUSEMOVE:
+			/*
 			printf("%dx%d\n", GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 			if (win->has_focus)
 			{
@@ -115,6 +108,7 @@ static LRESULT CALLBACK _window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 				win->mouse_x = cursor.x  - new_cursor.x;
 				win->mouse_y = cursor.y  - new_cursor.y;
 			}
+			*/
 			break;
 		case WM_ACTIVATEAPP:
 			ShowCursor(wParam);
@@ -204,4 +198,9 @@ void wm_destroy(wm_window_t* window)
 {
 	DestroyWindow(window->hwnd);
 	heap_free(window->heap, window);
+}
+
+void* wm_get_raw_window(wm_window_t* window)
+{
+	return window->hwnd;
 }

@@ -14,6 +14,8 @@ typedef enum debug_print_t
 	k_print_debug = 1 << 3
 }debug_print_t;
 
+typedef struct debug_system_t debug_system_t;
+
 //log a message to the console if the type is in the active mask
 void debug_print(uint32_t type, _Printf_format_string_ const char* format, ...);
 
@@ -29,14 +31,18 @@ int debug_backtrace(void** stack, int stack_cap, int offset);
 
 //record trace starting from func that called this.
 //must be called after debug_system_init!
-void debug_record_trace(void* address, uint64_t mem_size); 
+void debug_record_trace(debug_system_t* sys, void* address, uint64_t mem_size); 
+
+//remove previously recorded trace at the given address.
+void debug_remove_trace(debug_system_t* sys, void* address);
 
 //print the names of functions in the stack previously recorded the memory at this address
-void debug_print_trace(void* address);
+void debug_print_trace(debug_system_t* sys, void* address);
 
 //initialize debug system resources 
 //should be called before any other functions in the debug system
-void debug_system_init();
+//initializes semaphores too, so call before creating threads!
+debug_system_t* debug_system_init(uint32_t trace_max);
 
-//unitinialize debug system
-void debug_system_uninit();
+//unitinialize debug system, freeing all resources
+void debug_system_uninit(debug_system_t* sys);

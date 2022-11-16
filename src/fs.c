@@ -1,7 +1,6 @@
 #include "fs.h"
 #include "debug.h"
 #include "heap.h"
-#include "queue.h"
 #include "thread.h"
 #include "event.h"
 #include "queue.h"
@@ -100,9 +99,7 @@ fs_work_t* fs_write(fs_t* fs, const char* path, const void* buffer, size_t size,
 	if(use_compression)
 		queue_push(fs->compression_queue, work);
 	else
-	{
 		queue_push(fs->file_queue, work);
-	}
 
 	return work;
 
@@ -168,7 +165,6 @@ static void file_read(fs_work_t* work, fs_t* fs)
 	{
 		work->result = GetLastError();
 		CloseHandle(handle);
-		event_signal(work->done);
 		return;
 	}
 	work->buffer = heap_alloc(work->heap, work->null_terminate ? work->size + 1 : work->size, 8);
@@ -178,7 +174,6 @@ static void file_read(fs_work_t* work, fs_t* fs)
 	{
 		work->result = GetLastError();
 		CloseHandle(handle);
-		event_signal(work->done);
 		return;
 	}
 
@@ -269,7 +264,7 @@ static int file_thread_func(void* user)
 		{
 			break;
 		}
-		
+
 		switch (work->op)
 		{
 			case k_fs_work_op_read:
@@ -297,9 +292,9 @@ static int compression_thread_func(void* user)
 		{
 			case k_fs_work_op_write:
 			{
-				int buffer_size = LZ4_compressBound(work->size);
+				uint32_t buffer_size = LZ4_compressBound(work->size);
 				void* compression_buffer = heap_alloc(work->heap, buffer_size, 8);
-				int compressed_size = LZ4_compress_default(work->buffer, compression_buffer, work->size, buffer_size);
+				uint32_t compressed_size = LZ4_compress_default(work->buffer, compression_buffer, work->size, buffer_size);
 				if (compressed_size == 0)
 				{
 					debug_print(k_print_error, "Failed to compress file; LZ4 returned 0");
@@ -315,7 +310,7 @@ static int compression_thread_func(void* user)
 			case k_fs_work_op_read:
 			{
 				void* compression_buffer = heap_alloc(work->heap, work->compression_size + 1, 8); // + 1 to accomodate null terminator
-				int bytes_decompressed = LZ4_decompress_safe(work->buffer, compression_buffer, work->size, work->compression_size);
+				uint32_t bytes_decompressed = LZ4_decompress_safe(work->buffer, compression_buffer, work->size, work->compression_size);
 				((char*) compression_buffer)[bytes_decompressed] = 0;
 				if (bytes_decompressed <= 0)
 				{
