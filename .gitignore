@@ -52,8 +52,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-#src/x64/*
+src/x64/*
 src/x86/*
 *.vcxproj.filters
 *.vcxproj.user
-#src/.vs/*
+src/.vs/*
