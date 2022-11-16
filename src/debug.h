@@ -29,20 +29,24 @@ void debug_set_print_mask(uint32_t mask);
 //returns number of addresses captured
 int debug_backtrace(void** stack, int stack_cap, int offset);
 
+//return size of trace for allocation
+int debug_get_trace_size();
+
 //record trace starting from func that called this.
 //must be called after debug_system_init!
-void debug_record_trace(debug_system_t* sys, void* address, uint64_t mem_size); 
+//assumes that mem_size is debug_get_trace_size() less bytes than the actual allocated size
+void debug_record_trace(void* address, uint64_t mem_size); 
 
 //remove previously recorded trace at the given address.
-void debug_remove_trace(debug_system_t* sys, void* address);
+//void debug_remove_trace(debug_system_t* sys, void* address);
 
 //print the names of functions in the stack previously recorded the memory at this address
-void debug_print_trace(debug_system_t* sys, void* address);
+void debug_print_trace(void* address, size_t mem_size);
 
 //initialize debug system resources 
 //should be called before any other functions in the debug system
 //initializes semaphores too, so call before creating threads!
-debug_system_t* debug_system_init(uint32_t trace_max);
+void debug_system_init(uint32_t trace_max);
 
 //unitinialize debug system, freeing all resources
-void debug_system_uninit(debug_system_t* sys);
+void debug_system_uninit();

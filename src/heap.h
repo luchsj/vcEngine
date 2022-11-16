@@ -13,9 +13,10 @@ typedef struct debug_system_t debug_system_t;
 //creates a new memory heap, returns pointer to it
 //grow increment is the default size with which the heap grows (should be a multiple of OS page size)
 //debug system is optional. if you don't want to use it, just pass in NULL
-heap_t* heap_create(size_t grow_increment, debug_system_t* sys);
+heap_t* heap_create(size_t grow_increment);
 
 //allocate memory from a heap
+//if a debug system is attached to the heap, it will allocate the given size + 64 bytes
 void* heap_alloc(heap_t* heap, size_t size, size_t alignment);
 
 //change the size of previously allocated memory
