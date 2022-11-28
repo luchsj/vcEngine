@@ -115,7 +115,7 @@ frogger_game_t* frogger_game_create(heap_t* heap, fs_t* fs, wm_window_t* window,
 	game->name_type = ecs_register_component_type(game->ecs, "name", sizeof(name_component_t), _Alignof(name_component_t));
 
 	load_resources(game);
-	spawn_player(game, 0, 2);
+	spawn_player(game, 0, 2, .25);
 	//spawn_player(game, 1);
 
 	//first row
@@ -213,7 +213,7 @@ static void unload_resources(frogger_game_t* game)
 	fs_work_destroy(game->vertex_shader_work);
 }
 
-static void spawn_player(frogger_game_t* game, int index, int speed)
+static void spawn_player(frogger_game_t* game, int index, int speed, float scale)
 {
 	uint64_t k_player_ent_mask =
 		(1ULL << game->transform_type) |
@@ -225,10 +225,10 @@ static void spawn_player(frogger_game_t* game, int index, int speed)
 
 	transform_component_t* transform_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->transform_type, true);
 	transform_identity(&transform_comp->transform);
-	transform_comp->transform.translation.z = 4.0f;
-	transform_comp->transform.scale.x = 0.25f;
-	transform_comp->transform.scale.y = 0.25f;
-	transform_comp->transform.scale.z = 0.25f;
+	transform_comp->transform.translation.z = 4.0f; //should add var for start pos
+	transform_comp->transform.scale.x = scale;
+	transform_comp->transform.scale.y = scale;
+	transform_comp->transform.scale.z = scale;
 
 	name_component_t* name_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->name_type, true);
 	strcpy_s(name_comp->name, sizeof(name_comp->name), "player");
@@ -239,6 +239,9 @@ static void spawn_player(frogger_game_t* game, int index, int speed)
 	player_comp->hitbox_h = transform_comp->transform.scale.z;
 	player_comp->hitbox_w = transform_comp->transform.scale.y;
 	player_comp->respawn_pos = transform_comp->transform;
+	transform_comp->transform.scale.x = 0.25f;
+	transform_comp->transform.scale.y = 0.25f;
+	transform_comp->transform.scale.z = 0.25f;
 
 	model_component_t* model_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->model_type, true);
 	model_comp->mesh_info = &game->cube_mesh;

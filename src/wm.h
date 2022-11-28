@@ -4,6 +4,10 @@
 //window manager
 //description.
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct wm_window_t wm_window_t;
 typedef struct heap_t heap_t;
 
@@ -63,3 +67,7 @@ void wm_get_mouse_move(wm_window_t* window, int* x, int* y);
 
 // Get the raw OS window object.
 void* wm_get_raw_window(wm_window_t* window);
+
+#ifdef __cplusplus
+}
+#endif

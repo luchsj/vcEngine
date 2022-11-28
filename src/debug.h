@@ -3,6 +3,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //debug functions
 
 //bitmask for debug_print
@@ -50,3 +54,7 @@ void debug_system_init(uint32_t trace_max);
 
 //unitinialize debug system, freeing all resources
 void debug_system_uninit();
+
+#ifdef __cplusplus
+}
+#endif

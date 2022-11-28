@@ -24,7 +24,7 @@ int main(int argc, const char* argv[])
 	timer_startup();
 	debug_system_init(8);
 
-	heap_t* heap = heap_create(2 * 1024 * 1024, NULL);
+	heap_t* heap = heap_create(2 * 1024 * 1024);
 	fs_t* fs = fs_create(heap, 8);
 	wm_window_t* window = wm_create(heap);
 	render_t* render = render_create(heap, window);

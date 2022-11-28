@@ -2,6 +2,10 @@
 
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //heap memory manager
 //main object, heap_t, represents a dynamic memory heap
 //once created, memory can be allocated and free from the heap
@@ -29,3 +33,7 @@ void heap_free(heap_t* heap, void* address);
 
 //destroy a previously created heap
 void heap_destroy(heap_t* heap);
+
+#ifdef __cplusplus
+}
+#endif

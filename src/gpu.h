@@ -2,6 +2,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct gpu_t gpu_t;
 typedef struct gpu_cmd_buffer_t gpu_cmd_buffer_t;
 typedef struct gpu_descriptor_t gpu_descriptor_t;
@@ -122,3 +126,11 @@ void gpu_cmd_descriptor_bind(gpu_t* gpu, gpu_cmd_buffer_t* cmd_buffer, gpu_descr
 
 // Draw given current pipeline, mesh, and descriptor.
 void gpu_cmd_draw(gpu_t* gpu, gpu_cmd_buffer_t* cmd_buffer);
+
+// Returns a reference to the active graphic's API window object (i.e. Vulkan's window surface).
+// Wherever this is used, the returned value must be cast to the appropriate window type provided by the active graphics API.
+void* gpu_window_info(gpu_t* gpu);
+
+#ifdef __cplusplus
+}
+#endif

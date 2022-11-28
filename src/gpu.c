@@ -1378,6 +1378,11 @@ void gpu_cmd_draw(gpu_t* gpu, gpu_cmd_buffer_t* cmd_buffer)
 	}
 }
 
+void* gpu_window_info(gpu_t* gpu)
+{
+	return (void*) gpu->surface; 
+}
+
 static void create_mesh_layouts(gpu_t* gpu)
 {
 	// k_gpu_mesh_layout_tri_p444_i2
