@@ -1,5 +1,4 @@
 #pragma once
-#include "heap.h"
 //UI system
 //Mainly wrappers for Dear ImGui calls.
 
@@ -8,6 +7,9 @@ extern "C" {
 #endif
 
 typedef struct gui_t gui_t;
+typedef struct heap_t heap_t;
+typedef struct wm_window_t wm_window_t;
+typedef struct gpu_t gpu_t ;
 
 /*
 typedef enum gui_system_element_t

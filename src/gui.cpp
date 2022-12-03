@@ -1,12 +1,13 @@
 #include "debug.h"
-#include "gpu.h"
 #include "gui.h"
+#include "gpu.h"
 #include "heap.h"
 #include "wm.h"
 
 #include "imgui/imgui.h"
-#include "imgui/backends/imgui_impl_win32.h"
 #include "imgui/backends/imgui_impl_vulkan.h"
+
+#define VK_USE_PLATFORM_WIN32_KHR
 #include "vulkan/vulkan.h"
 
 #define WIN32_LEAN_AND_MEAN
@@ -17,6 +18,7 @@ typedef struct gui_t
 	ImGui_ImplVulkanH_Window* window_data;
 	wm_window_t* window;
 }gui_t;
+
 
 gui_t * gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 {
@@ -33,8 +35,8 @@ gui_t * gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 	ImGui::CreateContext();
 	ImGui::StyleColorsClassic();
 
-	ImGui_ImplWin32_Init(wm_get_raw_window(window));
-	new_sys->window_data->Surface = (VkSurfaceKHR) gpu_window_info(gpu);
+	//ImGui_ImplWin32_Init(wm_get_raw_window(window));
+	//new_sys->window_data->Surface;
 	//todo: gpu.c needs additional function to return reference to surface
 	//exposure concerns?
 	//imgui should stay on same thread as entities
