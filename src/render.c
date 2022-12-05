@@ -1,6 +1,7 @@
 #include "render.h"
 
 #include "ecs.h"
+#include "gui.h"
 #include "gpu.h"
 #include "heap.h"
 #include "queue.h"
@@ -64,6 +65,7 @@ typedef struct render_t
 	wm_window_t* window;
 	thread_t* thread;
 	gpu_t* gpu;
+	gpu_t* gui;
 	queue_t* queue;
 
 	int frame_counter;
@@ -130,6 +132,7 @@ static int render_thread_func(void* user)
 
 	render->gpu = gpu_create(render->heap, render->window);
 	render->gpu_frame_count = gpu_get_frame_count(render->gpu);
+	render->gui = gui_init(render->heap, render->window, render->gpu);
 
 	gpu_cmd_buffer_t* cmdbuf = NULL;
 	gpu_pipeline_t* last_pipeline = NULL;

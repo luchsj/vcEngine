@@ -16,6 +16,7 @@ typedef struct gpu_uniform_buffer_t gpu_uniform_buffer_t;
 
 typedef struct heap_t heap_t;
 typedef struct wm_window_t wm_window_t;
+typedef struct gui_init_info_t gui_init_info_t;
 
 typedef struct gpu_descriptor_info_t
 {
@@ -127,9 +128,9 @@ void gpu_cmd_descriptor_bind(gpu_t* gpu, gpu_cmd_buffer_t* cmd_buffer, gpu_descr
 // Draw given current pipeline, mesh, and descriptor.
 void gpu_cmd_draw(gpu_t* gpu, gpu_cmd_buffer_t* cmd_buffer);
 
-// Returns a reference to the active graphic's API window object (i.e. Vulkan's window surface).
-// Wherever this is used, the returned value must be cast to the appropriate window type provided by the active graphics API.
-void* gpu_window_info(gpu_t* gpu);
+// Passes initialization info to the GUI system through the "user" parameter
+// (which may be something like ImGui_ImplVulkan_InitInfo)
+void gpu_pass_info_to_gui(gpu_t* gpu, gui_init_info_t* user);
 
 #ifdef __cplusplus
 }

@@ -4,6 +4,8 @@
 #include "heap.h"
 #include "wm.h"
 
+#include "gui_helper.h"
+
 #define VK_USE_PLATFORM_WIN32_KHR
 #include "vulkan/vulkan.h"
 
@@ -72,6 +74,7 @@ typedef struct gpu_t
 	VkDevice logical_device;
 	VkPhysicalDeviceMemoryProperties memory_properties;
 	VkQueue queue;
+	uint32_t queue_family;
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swap_chain;
 
@@ -241,6 +244,7 @@ gpu_t* gpu_create(heap_t* heap, wm_window_t* window)
 
 	vkGetPhysicalDeviceMemoryProperties(gpu->physical_device, &gpu->memory_properties);
 	vkGetDeviceQueue(gpu->logical_device, queue_family_index, 0, &gpu->queue);
+	gpu->queue_family = queue_family_index;
 
 	//////////////////////////////////////////////////////
 	// Create a Windows surface on which to render
@@ -422,7 +426,7 @@ gpu_t* gpu_create(heap_t* heap, wm_window_t* window)
 				.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 				.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 				.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-				.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+				.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 			},
 			{
 				.format = VK_FORMAT_D32_SFLOAT,
@@ -1378,9 +1382,21 @@ void gpu_cmd_draw(gpu_t* gpu, gpu_cmd_buffer_t* cmd_buffer)
 	}
 }
 
-void* gpu_window_info(gpu_t* gpu)
+void gpu_pass_info_to_gui(gpu_t* gpu, gui_init_info_t* user)
 {
-	return (void*) gpu->surface; 
+	user->instance = gpu->instance;
+	user->physical_device = gpu->physical_device;
+	user->device = gpu->logical_device;
+	user->queue_family = gpu->queue_family;
+	user->queue = gpu->queue;
+	user->pipeline_cache = VK_NULL_HANDLE;
+	user->descriptor_pool = gpu->descriptor_pool;
+	user->subpass = 0;
+	user->msaa_samples = VK_SAMPLE_COUNT_1_BIT;
+	user->allocator = VK_NULL_HANDLE;
+	user->check_result = VK_NULL_HANDLE;
+	user->swap_chain = gpu->swap_chain;
+
 }
 
 static void create_mesh_layouts(gpu_t* gpu)

@@ -198,6 +198,7 @@
     <ClInclude Include="frogger_game.h" />
     <ClInclude Include="fs.h" />
     <ClInclude Include="gpu.h" />
+    <ClInclude Include="gui_helper.h" />
     <ClInclude Include="heap.h" />
     <ClInclude Include="imgui\backends\imgui_impl_vulkan.h" />
     <ClInclude Include="imgui\backends\imgui_impl_win32.h" />
