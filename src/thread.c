@@ -2,6 +2,7 @@
 
 #include "debug.h"
 #include <Windows.h>
+
 typedef struct thread_t thread_t;
 
 thread_t* thread_create(int (*func) (void*), void* data)

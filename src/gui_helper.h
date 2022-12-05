@@ -12,6 +12,7 @@ typedef struct gui_init_info_t
 	int min_image_count;
 	void* debug_report;
 	void* check_result;
+	void* command_pool;
 	void* descriptor_pool;
 	void* pipeline_cache;
 	void* image_count;
@@ -19,4 +20,7 @@ typedef struct gui_init_info_t
 	void* msaa_samples;
 	uint32_t subpass;
 	void* swap_chain;
+
+	uint32_t height;
+	uint32_t width;
 }gui_init_info_t;

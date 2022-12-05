@@ -177,7 +177,7 @@
     <ClCompile Include="mutex.c" />
     <ClCompile Include="quatf.c" />
     <ClCompile Include="queue.c" />
-    <ClCompile Include="render.c" />
+    <ClCompile Include="render.cpp" />
     <ClCompile Include="semaphore.c" />
     <ClCompile Include="simple_game.c" />
     <ClCompile Include="gui.cpp" />

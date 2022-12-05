@@ -1396,7 +1396,9 @@ void gpu_pass_info_to_gui(gpu_t* gpu, gui_init_info_t* user)
 	user->allocator = VK_NULL_HANDLE;
 	user->check_result = VK_NULL_HANDLE;
 	user->swap_chain = gpu->swap_chain;
-
+	user->command_pool = gpu->cmd_pool;
+	user->width = gpu->frame_width;
+	user->height = gpu->frame_height;
 }
 
 static void create_mesh_layouts(gpu_t* gpu)

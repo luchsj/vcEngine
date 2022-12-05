@@ -20,6 +20,7 @@ typedef enum command_type_t
 {
 	k_command_frame_done,
 	k_command_model,
+	k_command_ui,
 } command_type_t;
 
 typedef struct model_command_t
@@ -30,6 +31,11 @@ typedef struct model_command_t
 	gpu_shader_info_t* shader;
 	gpu_uniform_buffer_info_t uniform_buffer;
 } model_command_t;
+
+typedef struct ui_command_t
+{
+	command_type_t type;
+} ui_command_t;
 
 typedef struct frame_done_command_t
 {
@@ -67,6 +73,7 @@ typedef struct render_t
 	gpu_t* gpu;
 	gpu_t* gui;
 	queue_t* queue;
+	//texture
 
 	int frame_counter;
 	int gpu_frame_count;
@@ -87,7 +94,7 @@ static void destroy_stale_data(render_t* render);
 
 render_t* render_create(heap_t* heap, wm_window_t* window)
 {
-	render_t* render = heap_alloc(heap, sizeof(render_t), 8);
+	render_t* render = (render_t*) heap_alloc(heap, sizeof(render_t), 8);
 	render->heap = heap;
 	render->window = window;
 	render->queue = queue_create(heap, 3);
@@ -108,7 +115,7 @@ void render_destroy(render_t* render)
 
 void render_push_model(render_t* render, ecs_entity_ref_t* entity, gpu_mesh_info_t* mesh, gpu_shader_info_t* shader, gpu_uniform_buffer_info_t* uniform)
 {
-	model_command_t* command = heap_alloc(render->heap, sizeof(model_command_t), 8);
+	model_command_t* command = (model_command_t*) heap_alloc(render->heap, sizeof(model_command_t), 8);
 	command->type = k_command_model;
 	command->entity = *entity;
 	command->mesh = mesh;
@@ -119,20 +126,27 @@ void render_push_model(render_t* render, ecs_entity_ref_t* entity, gpu_mesh_info
 	queue_push(render->queue, command);
 }
 
+void render_push_ui(render_t* render, gui_t* gui)
+{
+	ui_command_t* command = (ui_command_t*) heap_alloc(render->heap, sizeof(ui_command_t), 8);
+	command->type = k_command_ui;
+}
+
 void render_push_done(render_t* render)
 {
-	frame_done_command_t* command = heap_alloc(render->heap, sizeof(frame_done_command_t), 8); //when does this get freed?
+	frame_done_command_t* command = (frame_done_command_t*) heap_alloc(render->heap, sizeof(frame_done_command_t), 8); //when does this get freed?
 	command->type = k_command_frame_done;
 	queue_push(render->queue, command);
 }
 
 static int render_thread_func(void* user)
 {
-	render_t* render = user;
+	render_t* render = (render_t*) user;
 
 	render->gpu = gpu_create(render->heap, render->window);
 	render->gpu_frame_count = gpu_get_frame_count(render->gpu);
 	render->gui = gui_init(render->heap, render->window, render->gpu);
+	//setup gui texture and store in in the render_t
 
 	gpu_cmd_buffer_t* cmdbuf = NULL;
 	gpu_pipeline_t* last_pipeline = NULL;
@@ -141,7 +155,7 @@ static int render_thread_func(void* user)
 
 	while (true)
 	{
-		command_type_t* type = queue_pop(render->queue);
+		command_type_t* type = (command_type_t*) queue_pop(render->queue);
 		if (!type)
 		{
 			break;
@@ -184,6 +198,10 @@ static int render_thread_func(void* user)
 			}
 			gpu_cmd_descriptor_bind(render->gpu, cmdbuf, instance->descriptors[frame_index]);
 			gpu_cmd_draw(render->gpu, cmdbuf);
+		}
+		else if (*type = k_command_ui)
+		{
+			//ImDrawData
 		}
 
 		heap_free(render->heap, type);

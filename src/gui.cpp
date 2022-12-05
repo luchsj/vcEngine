@@ -34,6 +34,9 @@ typedef struct gui_t
 	ImGui_ImplVulkanH_Window* window_data;
 	int min_image_count;
 	bool swap_chain_rebuild = false;
+
+	uint32_t frame_height;
+	uint32_t frame_width;
 #endif
 }gui_t;
 
@@ -94,6 +97,8 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 	new_sys->pipeline_cache = VK_NULL_HANDLE;
 	new_sys->descriptor_pool = (VkDescriptorPool)info_helper.descriptor_pool;
 	new_sys->swap_chain = (VkSwapchainKHR)info_helper.swap_chain;
+	new_sys->frame_height = info_helper.height;
+	new_sys->frame_width = info_helper.width;
 
 	new_sys->min_image_count = 2;
 	new_sys->swap_chain_rebuild = false;
@@ -185,13 +190,51 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
     init_info.CheckVkResultFn = check_vk_result;
 	*/
 
-	ImGui_ImplVulkan_Init(&init_info, new_sys->window_data->RenderPass);
+	ImGui_ImplVulkan_Init(&init_info, new_sys->render_pass);
+
+	// Upload ImGui fonts to GPU
+	VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
+	VkCommandBuffer command_buffer = wd->Frames[wd->FrameIndex].CommandBuffer;
+
+	vkResetCommandPool(new_sys->device, command_pool, 0);
+	//check_vk_result(err);
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer(command_buffer, &begin_info);
+	//check_vk_result(err);
+
+	ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
+
+	VkSubmitInfo end_info = {};
+	end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	end_info.commandBufferCount = 1;
+	end_info.pCommandBuffers = &command_buffer;
+	vkEndCommandBuffer(command_buffer);
+	//check_vk_result(err);
+	vkQueueSubmit(new_sys->queue, 1, &end_info, VK_NULL_HANDLE);
+	//check_vk_result(err);
+
+	vkDeviceWaitIdle(new_sys->device);
+	//check_vk_result(err);
+	ImGui_ImplVulkan_DestroyFontUploadObjects();
 
 	return new_sys;
 }
 
-void gui_draw_ui(gui_t* gui)
+void gui_push_ui_to_render(gui_t* gui)
 {
+	if (gui->swap_chain_rebuild)
+	{
+		gui->swap_chain_rebuild = false;
+		ImGui_ImplVulkan_SetMinImageCount(gui->min_image_count);
+		ImGui_ImplVulkanH_CreateOrResizeWindow(gui->instance, gui->physical_device, gui->device, &gui->window_data, gui->queue_family, gui->allocator, gui->frame_width, gui->frame_height, gui->min_image_count);
+		gui->window_data->FrameIndex = 0;
+	}
+
 	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
+	ImGui::ShowDemoWindow();
+	ImGui::Render();
 }

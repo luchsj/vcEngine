@@ -2,6 +2,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Threading support.
 
 // Handle to a thread.
@@ -17,3 +21,7 @@ int thread_destroy(thread);
 // Puts the calling thread to sleep for the specified number of milliseconds.
 // Thread will sleep for *approximately* the specified time.
 void thread_sleep(uint32_t ms);
+
+#ifdef __cplusplus
+}
+#endif
