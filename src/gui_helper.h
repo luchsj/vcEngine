@@ -2,6 +2,8 @@
 
 // Helper structs for information that must be shared between the GUI system and the GPU out of necessity.
 
+// General information needed by ImGui.
+
 typedef struct gui_init_info_t
 {
 	void* instance;
@@ -20,6 +22,7 @@ typedef struct gui_init_info_t
 	void* msaa_samples;
 	uint32_t subpass;
 	void* swap_chain;
+	void* surface;
 
 	uint32_t height;
 	uint32_t width;

@@ -21,7 +21,7 @@ typedef enum gui_system_element_t
 gui_t* gui_init(heap_t* heap, wm_window_t* window, gpu_t* gpu);
 
 //draw each element in the UI. called each frame in the render loop
-void gui_push_ui_to_render(gui_t* gut);
+void gui_push_ui_to_render(gui_t* gui);
 
 //add a new element to be drawn in ui_draw
 //void gui_add_element(gui_system_element_t element);

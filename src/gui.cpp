@@ -3,6 +3,7 @@
 #include "gui_helper.h"
 #include "gpu.h"
 #include "heap.h"
+#include "render.h"
 #include "wm.h"
 
 #include "imgui/imgui.h"
@@ -14,6 +15,15 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+
+static void check_vk_result(VkResult err)
+{
+	if (err == 0)
+		return;
+	fprintf(stderr, "GUI Vulkan failure: VkResult = %d\n", err);
+	if (err < 0)
+		abort();
+}
 
 typedef struct gui_t
 {
@@ -74,6 +84,7 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 	pool_info.pPoolSizes = pool_sizes;
 
 	// Set default values for new_sys
+	{
 	new_sys->allocator = NULL;
 	new_sys->instance = VK_NULL_HANDLE;
 	new_sys->physical_device = VK_NULL_HANDLE;
@@ -84,26 +95,32 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 	new_sys->pipeline_cache = VK_NULL_HANDLE;
 	new_sys->descriptor_pool = VK_NULL_HANDLE;
 	new_sys->swap_chain = VK_NULL_HANDLE;
+	}
 
 	// Get information from the GPU
-	gui_init_info_t info_helper;
-	gpu_pass_info_to_gui(gpu, &info_helper);
+	{
+		gui_init_info_t info_helper;
+		gpu_pass_info_to_gui(gpu, &info_helper);
 
-	new_sys->instance = (VkInstance)info_helper.instance;
-	new_sys->physical_device = (VkPhysicalDevice)info_helper.physical_device;
-	new_sys->device = (VkDevice)info_helper.device;
-	new_sys->queue_family = info_helper.queue_family;
-	new_sys->queue = (VkQueue)info_helper.queue;
-	new_sys->pipeline_cache = VK_NULL_HANDLE;
-	new_sys->descriptor_pool = (VkDescriptorPool)info_helper.descriptor_pool;
-	new_sys->swap_chain = (VkSwapchainKHR)info_helper.swap_chain;
-	new_sys->frame_height = info_helper.height;
-	new_sys->frame_width = info_helper.width;
+		new_sys->instance = (VkInstance)info_helper.instance;
+		new_sys->physical_device = (VkPhysicalDevice)info_helper.physical_device;
+		new_sys->device = (VkDevice)info_helper.device;
+		new_sys->queue_family = info_helper.queue_family;
+		new_sys->queue = (VkQueue)info_helper.queue;
+		new_sys->pipeline_cache = VK_NULL_HANDLE;
+		new_sys->descriptor_pool = (VkDescriptorPool)info_helper.descriptor_pool;
+		new_sys->swap_chain = (VkSwapchainKHR)info_helper.swap_chain;
+		new_sys->frame_height = info_helper.height;
+		new_sys->frame_width = info_helper.width;
 
-	new_sys->min_image_count = 2;
-	new_sys->swap_chain_rebuild = false;
+		new_sys->min_image_count = 2;
+		new_sys->swap_chain_rebuild = false;
+	
 
-	new_sys->window_data = (ImGui_ImplVulkanH_Window*)heap_alloc(new_sys->heap, sizeof(ImGui_ImplVulkanH_Window), 8);
+	// Initialize window data 
+	new_sys->window_data = (ImGui_ImplVulkanH_Window*) heap_alloc(new_sys->heap, sizeof(ImGui_ImplVulkanH_Window), 8);
+	new_sys->window_data->Surface = (VkSurfaceKHR) info_helper.surface;
+	}
 
 	// Initialize descriptor pool
 	vkCreateDescriptorPool(new_sys->device, &pool_info, nullptr, &new_sys->descriptor_pool);
@@ -116,6 +133,7 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 	//imgui's output data should then be given to the render thread - gonna be a challenge to sync!
 
 	// Initialize render pass
+	{
 	VkAttachmentDescription attachment = {};
 	attachment.format = VK_FORMAT_B8G8R8A8_SRGB; //where can we unhardcode this???
 	attachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -153,6 +171,7 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 	info.pDependencies = &dependency;
 	if (vkCreateRenderPass(new_sys->device, &info, nullptr, &new_sys->render_pass) != VK_SUCCESS) {
 		debug_print(k_print_error, "GUI init failure: failed to initialize render pass\n");
+	}
 	}
 
 	IMGUI_CHECKVERSION();
@@ -192,6 +211,7 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 
 	ImGui_ImplVulkan_Init(&init_info, new_sys->render_pass);
 
+	/*
 	// Upload ImGui fonts to GPU
 	VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
 	VkCommandBuffer command_buffer = wd->Frames[wd->FrameIndex].CommandBuffer;
@@ -218,23 +238,40 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 	vkDeviceWaitIdle(new_sys->device);
 	//check_vk_result(err);
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
+	*/
 
 	return new_sys;
 }
 
-void gui_push_ui_to_render(gui_t* gui)
+void gui_push_ui_to_render(gui_t* gui, render_t* render)
 {
+	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+	//Resize swap chain if necessary
 	if (gui->swap_chain_rebuild)
 	{
 		gui->swap_chain_rebuild = false;
 		ImGui_ImplVulkan_SetMinImageCount(gui->min_image_count);
-		ImGui_ImplVulkanH_CreateOrResizeWindow(gui->instance, gui->physical_device, gui->device, &gui->window_data, gui->queue_family, gui->allocator, gui->frame_width, gui->frame_height, gui->min_image_count);
+		ImGui_ImplVulkanH_CreateOrResizeWindow(gui->instance, gui->physical_device, gui->device, gui->window_data, gui->queue_family, gui->allocator, gui->frame_width, gui->frame_height, gui->min_image_count);
 		gui->window_data->FrameIndex = 0;
 	}
 
+	// Tell ImGui to generate a new frame
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 	ImGui::ShowDemoWindow();
 	ImGui::Render();
+
+	ImDrawData* draw_data = ImGui::GetDrawData();
+	const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
+	if (!is_minimized)
+	{
+		gui->window_data->ClearValue.color.float32[0] = clear_color.x * clear_color.w;
+		gui->window_data->ClearValue.color.float32[1] = clear_color.y * clear_color.w;
+		gui->window_data->ClearValue.color.float32[2] = clear_color.z * clear_color.w;
+		gui->window_data->ClearValue.color.float32[3] = clear_color.w;
+	}
+
+	render_push_ui(render, draw_data);
 }

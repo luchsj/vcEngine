@@ -11,6 +11,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include "imgui/imgui.h"
+
 enum
 {
 	k_render_max_drawables = 512,
@@ -35,6 +37,7 @@ typedef struct model_command_t
 typedef struct ui_command_t
 {
 	command_type_t type;
+	ImDrawData draw_data;
 } ui_command_t;
 
 typedef struct frame_done_command_t
@@ -71,7 +74,7 @@ typedef struct render_t
 	wm_window_t* window;
 	thread_t* thread;
 	gpu_t* gpu;
-	gpu_t* gui;
+	gui_t* gui;
 	queue_t* queue;
 	//texture
 
@@ -126,7 +129,7 @@ void render_push_model(render_t* render, ecs_entity_ref_t* entity, gpu_mesh_info
 	queue_push(render->queue, command);
 }
 
-void render_push_ui(render_t* render, gui_t* gui)
+void render_push_ui(render_t* render, ImDrawData* data)
 {
 	ui_command_t* command = (ui_command_t*) heap_alloc(render->heap, sizeof(ui_command_t), 8);
 	command->type = k_command_ui;
@@ -202,6 +205,11 @@ static int render_thread_func(void* user)
 		else if (*type = k_command_ui)
 		{
 			//ImDrawData
+			// FrameRender
+			// FramePresent
+
+			//ImGui_ImplVulkan_RenderDrawData(draw_data, fd->CommandBuffer);
+			gpu_cmd_draw(render->gpu, cmdbuf);
 		}
 
 		heap_free(render->heap, type);
@@ -242,8 +250,10 @@ static draw_shader_t* create_or_get_shader_for_model_command(render_t* render, m
 	{
 		gpu_pipeline_info_t pipeline_info =
 		{
-			.shader = shader->shader,
-			.mesh_layout = command->mesh->layout,
+			//.shader = 
+			shader->shader,
+			//.mesh_layout = 
+			command->mesh->layout,
 		};
 		shader->pipeline = gpu_pipeline_create(render->gpu, &pipeline_info);
 	}
@@ -293,17 +303,20 @@ static draw_instance_t* create_or_get_instance_for_model_command(render_t* rende
 		instance = &render->instances[render->instance_count++];
 
 		instance->entity = command->entity;
-		instance->uniform_buffers = heap_alloc(render->heap, sizeof(gpu_uniform_buffer_t*) * render->gpu_frame_count, 8);
-		instance->descriptors = heap_alloc(render->heap, sizeof(gpu_descriptor_t*) * render->gpu_frame_count, 8);
+		instance->uniform_buffers = (gpu_uniform_buffer_t**) heap_alloc(render->heap, sizeof(gpu_uniform_buffer_t*) * render->gpu_frame_count, 8);
+		instance->descriptors = (gpu_descriptor_t**) heap_alloc(render->heap, sizeof(gpu_descriptor_t*) * render->gpu_frame_count, 8);
 		for (int i = 0; i < render->gpu_frame_count; ++i)
 		{
 			instance->uniform_buffers[i] = gpu_uniform_buffer_create(render->gpu, &command->uniform_buffer);
 
 			gpu_descriptor_info_t descriptor_info =
 			{
-				.shader = shader,
-				.uniform_buffers = &instance->uniform_buffers[i],
-				.uniform_buffer_count = 1,
+				//.shader = 
+				shader,
+				//.uniform_buffers = 
+				&instance->uniform_buffers[i],
+				//.uniform_buffer_count = 
+				1,
 			};
 			instance->descriptors[i] = gpu_descriptor_create(render->gpu, &descriptor_info);
 		}

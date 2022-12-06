@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Thread-safe Queue container
 
 // Handle to a thread-safe queue.
@@ -21,3 +25,6 @@ void queue_push(queue_t* queue, void* item);
 //safe for multiple threads to pop at the same time
 void* queue_pop(queue_t* queue);
 
+#ifdef __cplusplus
+}
+#endif

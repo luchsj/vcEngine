@@ -1399,6 +1399,7 @@ void gpu_pass_info_to_gui(gpu_t* gpu, gui_init_info_t* user)
 	user->command_pool = gpu->cmd_pool;
 	user->width = gpu->frame_width;
 	user->height = gpu->frame_height;
+	user->surface = gpu->surface;
 }
 
 static void create_mesh_layouts(gpu_t* gpu)
