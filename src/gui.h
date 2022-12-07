@@ -6,10 +6,12 @@
 extern "C" {
 #endif
 
-typedef struct gui_t gui_t;
+
 typedef struct heap_t heap_t;
 typedef struct wm_window_t wm_window_t;
 typedef struct gpu_t gpu_t;
+typedef struct gui_t gui_t;
+typedef struct render_t render_t;
 
 /*
 typedef enum gui_system_element_t
@@ -21,8 +23,12 @@ typedef enum gui_system_element_t
 gui_t* gui_init(heap_t* heap, wm_window_t* window, gpu_t* gpu);
 
 //draw each element in the UI. called each frame in the render loop
-void gui_push_ui_to_render(gui_t* gui);
+void gui_render(gui_t* gui);
 
+// Present GUI content
+void gui_present(gui_t* gui);
+
+//void* gui_render_gui(void* ui_draw_data);
 //add a new element to be drawn in ui_draw
 //void gui_add_element(gui_system_element_t element);
 #ifdef __cplusplus

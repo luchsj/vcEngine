@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_vulkan.h"
 
 enum
 {
@@ -37,7 +38,7 @@ typedef struct model_command_t
 typedef struct ui_command_t
 {
 	command_type_t type;
-	ImDrawData draw_data;
+	gui_t* gui;
 } ui_command_t;
 
 typedef struct frame_done_command_t
@@ -129,10 +130,11 @@ void render_push_model(render_t* render, ecs_entity_ref_t* entity, gpu_mesh_info
 	queue_push(render->queue, command);
 }
 
-void render_push_ui(render_t* render, ImDrawData* data)
+void render_push_ui(render_t* render)
 {
 	ui_command_t* command = (ui_command_t*) heap_alloc(render->heap, sizeof(ui_command_t), 8);
 	command->type = k_command_ui;
+	queue_push(render->queue, command);
 }
 
 void render_push_done(render_t* render)
@@ -206,10 +208,11 @@ static int render_thread_func(void* user)
 		{
 			//ImDrawData
 			// FrameRender
+			gui_render(render->gui);
 			// FramePresent
+			gui_present(render->gui);
 
-			//ImGui_ImplVulkan_RenderDrawData(draw_data, fd->CommandBuffer);
-			gpu_cmd_draw(render->gpu, cmdbuf);
+			//gpu_cmd_draw(render->gpu, cmdbuf);
 		}
 
 		heap_free(render->heap, type);

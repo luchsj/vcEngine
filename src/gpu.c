@@ -9,6 +9,8 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include "vulkan/vulkan.h"
 
+
+
 #include <malloc.h>
 #include <string.h>
 
@@ -19,7 +21,7 @@ typedef struct gpu_cmd_buffer_t
 	int index_count;
 	int vertex_count;
 } gpu_cmd_buffer_t;
-
+ 
 typedef struct gpu_descriptor_t
 {
 	VkDescriptorSet set;
@@ -1400,6 +1402,11 @@ void gpu_pass_info_to_gui(gpu_t* gpu, gui_init_info_t* user)
 	user->width = gpu->frame_width;
 	user->height = gpu->frame_height;
 	user->surface = gpu->surface;
+}
+
+void gpu_gui_render(gpu_t* gpu, void* ui_draw_data)
+{
+
 }
 
 static void create_mesh_layouts(gpu_t* gpu)
