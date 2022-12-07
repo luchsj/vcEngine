@@ -150,8 +150,8 @@ static int render_thread_func(void* user)
 
 	render->gpu = gpu_create(render->heap, render->window);
 	render->gpu_frame_count = gpu_get_frame_count(render->gpu);
-	render->gui = gui_init(render->heap, render->window, render->gpu);
-	gui_font_init(render->gui);
+	//render->gui = gui_init(render->heap, render->window, render->gpu);
+	//gui_font_init(render->gui);
 	//setup gui texture and store in in the render_t
 
 	gpu_cmd_buffer_t* cmdbuf = NULL;

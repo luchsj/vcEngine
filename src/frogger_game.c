@@ -155,7 +155,7 @@ void frogger_game_update(frogger_game_t* game)
 	update_players(game);
 	update_cars(game);
 	draw_models(game);
-	render_push_ui(game->render);
+	//render_push_ui(game->render);
 	render_push_done(game->render);
 }
 

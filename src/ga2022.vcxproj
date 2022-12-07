@@ -158,7 +158,7 @@
     <ClCompile Include="event.c" />
     <ClCompile Include="frogger_game.c" />
     <ClCompile Include="fs.c" />
-    <ClCompile Include="gpu.c" />
+    <ClCompile Include="gpu.cpp" />
     <ClCompile Include="heap.c" />
     <ClCompile Include="imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp" />
