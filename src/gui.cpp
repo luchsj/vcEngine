@@ -214,36 +214,6 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 
 	ImGui_ImplVulkan_Init(&init_info, new_sys->render_pass);
 
-	// Upload Fonts
-	{
-		// Use any command queue
-		VkCommandPool command_pool = new_sys->window_data->Frames[new_sys->window_data->FrameIndex].CommandPool;
-		VkCommandBuffer command_buffer = new_sys->window_data->Frames[new_sys->window_data->FrameIndex].CommandBuffer;
-
-		err = vkResetCommandPool(new_sys->device, command_pool, 0);
-		check_vk_result(err);
-		VkCommandBufferBeginInfo begin_info = {};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		err = vkBeginCommandBuffer(command_buffer, &begin_info);
-		check_vk_result(err);
-
-		ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
-
-		VkSubmitInfo end_info = {};
-		end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		end_info.commandBufferCount = 1;
-		end_info.pCommandBuffers = &command_buffer;
-		err = vkEndCommandBuffer(command_buffer);
-		check_vk_result(err);
-		err = vkQueueSubmit(new_sys->queue, 1, &end_info, VK_NULL_HANDLE);
-		check_vk_result(err);
-
-		err = vkDeviceWaitIdle(new_sys->device);
-		check_vk_result(err);
-		ImGui_ImplVulkan_DestroyFontUploadObjects();
-	}
-
 	/*
 	// Upload ImGui fonts to GPU
 	VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
@@ -274,6 +244,38 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 	
 	*/
 	return new_sys;
+}
+
+void gui_font_init(gui_t* gui)
+{
+	// Upload Fonts
+	VkResult err;
+	// Use any command queue
+	VkCommandPool command_pool = gui->window_data->Frames[gui->window_data->FrameIndex].CommandPool;
+	VkCommandBuffer command_buffer = gui->window_data->Frames[gui->window_data->FrameIndex].CommandBuffer;
+
+	err = vkResetCommandPool(gui->device, command_pool, 0);
+	check_vk_result(err);
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	err = vkBeginCommandBuffer(command_buffer, &begin_info);
+	check_vk_result(err);
+
+	ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
+
+	VkSubmitInfo end_info = {};
+	end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	end_info.commandBufferCount = 1;
+	end_info.pCommandBuffers = &command_buffer;
+	err = vkEndCommandBuffer(command_buffer);
+	check_vk_result(err);
+	err = vkQueueSubmit(gui->queue, 1, &end_info, VK_NULL_HANDLE);
+	check_vk_result(err);
+
+	err = vkDeviceWaitIdle(gui->device);
+	check_vk_result(err);
+	ImGui_ImplVulkan_DestroyFontUploadObjects();
 }
 
 void gui_render(gui_t* gui)

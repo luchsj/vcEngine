@@ -28,6 +28,8 @@ void gui_render(gui_t* gui);
 // Present GUI content
 void gui_present(gui_t* gui);
 
+void gui_font_init(gui_t* gui);
+
 //void* gui_render_gui(void* ui_draw_data);
 //add a new element to be drawn in ui_draw
 //void gui_add_element(gui_system_element_t element);
