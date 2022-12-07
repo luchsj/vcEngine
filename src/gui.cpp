@@ -123,7 +123,9 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 	// Initialize window data 
 	new_sys->window_data = (ImGui_ImplVulkanH_Window*) heap_alloc(new_sys->heap, sizeof(ImGui_ImplVulkanH_Window), 8);
 	new_sys->window_data->Surface = (VkSurfaceKHR) info_helper.surface;
+    ImGui_ImplVulkanH_CreateOrResizeWindow(new_sys->instance, new_sys->physical_device, new_sys->device, new_sys->window_data, new_sys->queue_family, new_sys->allocator, new_sys->frame_width, new_sys->frame_height, new_sys->min_image_count);
 	}
+
 
 	// Initialize descriptor pool
 	vkCreateDescriptorPool(new_sys->device, &pool_info, nullptr, &new_sys->descriptor_pool);
