@@ -50,6 +50,40 @@ typedef struct gui_t
 #endif
 }gui_t;
 
+
+static void setup_window_vulkan(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface, int width, int height, gui_t* gui)
+{
+	wd->Surface = surface;
+
+	// Check for WSI support
+	VkBool32 res;
+	vkGetPhysicalDeviceSurfaceSupportKHR(gui->physical_device, gui->queue_family, wd->Surface, &res);
+	if (res != VK_TRUE)
+	{
+		fprintf(stderr, "Error no WSI support on physical device 0\n");
+		exit(-1);
+	}
+
+	// Select Surface Format
+	const VkFormat requestSurfaceImageFormat[] = { VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM };
+	const VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+	wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(gui->physical_device, wd->Surface, requestSurfaceImageFormat, (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat), requestSurfaceColorSpace);
+
+	// Select Present Mode
+#ifdef IMGUI_UNLIMITED_FRAME_RATE
+	VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_KHR };
+#else
+	VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_FIFO_KHR };
+#endif
+	wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(gui->physical_device, wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
+	//printf("[vulkan] Selected PresentMode = %d\n", wd->PresentMode);
+
+	// Create SwapChain, RenderPass, Framebuffer, etc.
+	IM_ASSERT(gui->min_image_count >= 2);
+	ImGui_ImplVulkanH_CreateOrResizeWindow(gui->instance, gui->physical_device, gui->device, wd, gui->queue_family, gui->allocator, width, height, gui->min_image_count);
+}
+
+
 gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 {
 	VkResult err; 
@@ -112,7 +146,7 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 		new_sys->queue = (VkQueue)info_helper.queue;
 		new_sys->pipeline_cache = VK_NULL_HANDLE;
 		new_sys->descriptor_pool = (VkDescriptorPool)info_helper.descriptor_pool;
-		new_sys->swap_chain = (VkSwapchainKHR)info_helper.swap_chain;
+		//new_sys->swap_chain = (VkSwapchainKHR)info_helper.swap_chain;
 		new_sys->frame_height = info_helper.height;
 		new_sys->frame_width = info_helper.width;
 
@@ -123,7 +157,8 @@ gui_t* gui_init(heap_t * heap, wm_window_t * window, gpu_t * gpu)
 	// Initialize window data 
 	new_sys->window_data = (ImGui_ImplVulkanH_Window*) heap_alloc(new_sys->heap, sizeof(ImGui_ImplVulkanH_Window), 8);
 	new_sys->window_data->Surface = (VkSurfaceKHR) info_helper.surface;
-    ImGui_ImplVulkanH_CreateOrResizeWindow(new_sys->instance, new_sys->physical_device, new_sys->device, new_sys->window_data, new_sys->queue_family, new_sys->allocator, new_sys->frame_width, new_sys->frame_height, new_sys->min_image_count);
+
+		setup_window_vulkan(new_sys->window_data, (VkSurfaceKHR)info_helper.surface, new_sys->frame_width, new_sys->frame_height, new_sys);
 	}
 
 
