@@ -153,6 +153,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="atomic.c" />
+    <ClCompile Include="audio.c" />
     <ClCompile Include="debug.c" />
     <ClCompile Include="ecs.c" />
     <ClCompile Include="event.c" />
@@ -192,6 +193,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="atomic.h" />
+    <ClInclude Include="audio.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="ecs.h" />
     <ClInclude Include="event.h" />
@@ -214,6 +216,7 @@
     <ClInclude Include="l4z\lz4frame_static.h" />
     <ClInclude Include="l4z\lz4hc.h" />
     <ClInclude Include="l4z\xxhash.h" />
+    <ClInclude Include="miniaudio.h" />
     <ClInclude Include="mutex.h" />
     <ClInclude Include="quatf.h" />
     <ClInclude Include="queue.h" />

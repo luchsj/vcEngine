@@ -1,3 +1,4 @@
+#include "audio.h"
 #include "ecs.h"
 #include "fs.h"
 #include "debug.h"
@@ -42,6 +43,7 @@ typedef struct player_component_t
 	float hitbox_h;
 	float hitbox_w;
 	transform_t respawn_pos;
+	audio_clip_t* respawn_sfx;
 } player_component_t;
 
 typedef struct car_component_t
@@ -64,6 +66,7 @@ typedef struct frogger_game_t
 	fs_t* fs;
 	wm_window_t* window;
 	render_t* render;
+	audio_t* audio;
 
 	timer_object_t* timer;
 
@@ -95,13 +98,14 @@ static void update_players(frogger_game_t* game);
 static void update_cars(frogger_game_t* game);
 static void draw_models(frogger_game_t* game);
 
-frogger_game_t* frogger_game_create(heap_t* heap, fs_t* fs, wm_window_t* window, render_t* render)
+frogger_game_t* frogger_game_create(heap_t* heap, fs_t* fs, wm_window_t* window, render_t* render, audio_t* audio)
 {
 	frogger_game_t* game = heap_alloc(heap, sizeof(frogger_game_t), 8);
 	game->heap = heap;
 	game->fs = fs;
 	game->window = window;
 	game->render = render;
+	game->audio = audio;
 
 	game->timer = timer_object_create(heap, NULL);
 
@@ -115,7 +119,7 @@ frogger_game_t* frogger_game_create(heap_t* heap, fs_t* fs, wm_window_t* window,
 	game->name_type = ecs_register_component_type(game->ecs, "name", sizeof(name_component_t), _Alignof(name_component_t));
 
 	load_resources(game);
-	spawn_player(game, 0, 2, .25);
+	spawn_player(game, 0, 2);
 	//spawn_player(game, 1);
 
 	//first row
@@ -155,7 +159,6 @@ void frogger_game_update(frogger_game_t* game)
 	update_players(game);
 	update_cars(game);
 	draw_models(game);
-	render_push_ui(game->render);
 	render_push_done(game->render);
 }
 
@@ -214,7 +217,7 @@ static void unload_resources(frogger_game_t* game)
 	fs_work_destroy(game->vertex_shader_work);
 }
 
-static void spawn_player(frogger_game_t* game, int index, int speed, float scale)
+static void spawn_player(frogger_game_t* game, int index, int speed)
 {
 	uint64_t k_player_ent_mask =
 		(1ULL << game->transform_type) |
@@ -226,10 +229,10 @@ static void spawn_player(frogger_game_t* game, int index, int speed, float scale
 
 	transform_component_t* transform_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->transform_type, true);
 	transform_identity(&transform_comp->transform);
-	transform_comp->transform.translation.z = 4.0f; //should add var for start pos
-	transform_comp->transform.scale.x = scale;
-	transform_comp->transform.scale.y = scale;
-	transform_comp->transform.scale.z = scale;
+	transform_comp->transform.translation.z = 4.0f;
+	transform_comp->transform.scale.x = 0.25f;
+	transform_comp->transform.scale.y = 0.25f;
+	transform_comp->transform.scale.z = 0.25f;
 
 	name_component_t* name_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->name_type, true);
 	strcpy_s(name_comp->name, sizeof(name_comp->name), "player");
@@ -240,9 +243,8 @@ static void spawn_player(frogger_game_t* game, int index, int speed, float scale
 	player_comp->hitbox_h = transform_comp->transform.scale.z;
 	player_comp->hitbox_w = transform_comp->transform.scale.y;
 	player_comp->respawn_pos = transform_comp->transform;
-	transform_comp->transform.scale.x = 0.25f;
-	transform_comp->transform.scale.y = 0.25f;
-	transform_comp->transform.scale.z = 0.25f;
+	player_comp->respawn_sfx = audio_clip_load(game->audio, "C:/Users/queegins/Downloads/2007 Snare.wav", false, true);
+	audio_clip_set_gain(game->audio, player_comp->respawn_sfx, 0.8f);
 
 	model_component_t* model_comp = ecs_entity_get_component(game->ecs, game->player_ent, game->model_type, true);
 	model_comp->mesh_info = &game->cube_mesh;
@@ -381,7 +383,9 @@ static void update_cars(frogger_game_t* game)
 		if (fabs(player_transform->transform.translation.z - transform_comp->transform.translation.z) < car_comp->hitbox_h + player_comp->hitbox_h
 			&& fabs(player_transform->transform.translation.y - transform_comp->transform.translation.y) < car_comp->hitbox_w + player_comp->hitbox_w)
 		{
+			audio_clip_set_position(game->audio, player_comp->respawn_sfx, vec3f_scale(vec3f_forward(), -player_transform->transform.translation.y));
 			player_transform->transform = player_comp->respawn_pos;
+			audio_clip_play(game->audio, player_comp->respawn_sfx);
 		}
 	}
 }

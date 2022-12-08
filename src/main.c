@@ -1,3 +1,4 @@
+#include "audio.h"
 #include "debug.h"
 #include "fs.h"
 #include "heap.h"
@@ -28,15 +29,19 @@ int main(int argc, const char* argv[])
 	fs_t* fs = fs_create(heap, 8);
 	wm_window_t* window = wm_create(heap);
 	render_t* render = render_create(heap, window);
+	audio_t* audio = audio_init(heap);
+	audio_clip_t* bgm = audio_clip_load(audio, "C:/Users/queegins/Downloads/stadium_rave.mp3", true, true);
 
-	frogger_game_t* game = frogger_game_create(heap, fs, window, render);
-
+	audio_clip_set_gain(audio, bgm, .3f);
+	frogger_game_t* game = frogger_game_create(heap, fs, window, render, audio);
+	audio_clip_play(audio, bgm);
 	while (!wm_pump(window))
 	{
 		frogger_game_update(game);
 	}
 
-	/* XXX: Shutdown render before the game. Render uses game resources. */
+	audio_clip_destroy(audio, bgm);
+	audio_destroy(audio);
 	render_destroy(render);
 
 	frogger_game_destroy(game);
